@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
 import Queue from "@/components/Queue";
 import MusicPlayer from "@/components/MusicPlayer";
 import Visualization from "@/components/Visualization";
+import { SocketProvider, useSocket } from "@/contexts/SocketContext";
 
 // Mock data for demonstration
 const upcomingSongs = [
@@ -40,13 +42,37 @@ const upcomingSongs = [
   },
 ];
 
-export default function RadioPage() {
+// Inner component that has access to socket context
+function RadioPageContent() {
   const [currentSong] = useState({
     title: "Retro Wave Runner",
     artist: "NeonBeats",
     duration: "3:42",
     currentTime: "1:23",
   });
+
+  const { authenticateUser, isConnected } = useSocket();
+  const router = useRouter();
+
+  useEffect(() => {
+    // Check if user is properly registered
+    const userId = localStorage.getItem("userId");
+    const userName = localStorage.getItem("userName");
+    const userAvatar = localStorage.getItem("userAvatar");
+
+    if (!userId || !userName || !userAvatar) {
+      // Redirect back to home if user data is missing
+      alert("Please register first to access the radio.");
+      router.push("/");
+      return;
+    }
+
+    // Authenticate user when socket connects
+    if (isConnected && userId) {
+      console.log("🔐 Authenticating user with ID:", userId);
+      authenticateUser(userId);
+    }
+  }, [isConnected, authenticateUser, router]);
 
   return (
     <div className="min-h-screen bg-background p-4 flex items-center justify-center">
@@ -69,5 +95,14 @@ export default function RadioPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Main component wrapped with SocketProvider
+export default function RadioPage() {
+  return (
+    <SocketProvider>
+      <RadioPageContent />
+    </SocketProvider>
   );
 }

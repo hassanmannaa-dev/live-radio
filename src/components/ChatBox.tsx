@@ -9,14 +9,26 @@ import {
 } from "@/components/ui/8bit/card";
 import { Button } from "@/components/ui/8bit/button";
 import { Textarea } from "@/components/ui/8bit/textarea";
+import { useSocket } from "@/contexts/SocketContext";
 
 interface ChatMessage {
   id: string;
+  userId?: string;
   username: string;
+  avatarId?: number;
   message: string;
-  timestamp: Date;
+  timestamp: Date | string;
   displayText: string;
   isAnimating: boolean;
+}
+
+interface BackendChatMessage {
+  id: string;
+  userId: string;
+  username: string;
+  avatarId: number;
+  message: string;
+  timestamp: string;
 }
 
 interface ChatBoxProps {
@@ -27,6 +39,59 @@ export default function ChatBox({ className }: ChatBoxProps) {
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const { socket, isConnected, isAuthenticated } = useSocket();
+
+  // Setup socket event listeners
+  useEffect(() => {
+    if (!socket) return;
+
+    // Load chat history when connecting
+    const handleChatHistory = (messages: BackendChatMessage[]) => {
+      console.log("📜 Loading chat history:", messages);
+      const formattedMessages = messages.map((msg) => ({
+        ...msg,
+        timestamp: new Date(msg.timestamp),
+        displayText: msg.message,
+        isAnimating: false,
+      }));
+      setChatMessages(formattedMessages);
+    };
+
+    // Handle new messages from other users
+    const handleNewMessage = (messageData: BackendChatMessage) => {
+      console.log("💬 New message received:", messageData);
+
+      const newMessage: ChatMessage = {
+        id: messageData.id,
+        userId: messageData.userId,
+        username: messageData.username,
+        avatarId: messageData.avatarId,
+        message: messageData.message,
+        timestamp: new Date(messageData.timestamp),
+        displayText: "",
+        isAnimating: true,
+      };
+
+      setChatMessages((prev) => [...prev, newMessage]);
+      animateText(messageData.message, messageData.id);
+    };
+
+    // Handle message errors
+    const handleMessageError = (error: { message?: string }) => {
+      console.error("❌ Message error:", error);
+      alert(error.message || "Failed to send message");
+    };
+
+    socket.on("chatHistory", handleChatHistory);
+    socket.on("newMessage", handleNewMessage);
+    socket.on("messageError", handleMessageError);
+
+    return () => {
+      socket.off("chatHistory", handleChatHistory);
+      socket.off("newMessage", handleNewMessage);
+      socket.off("messageError", handleMessageError);
+    };
+  }, [socket]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -58,19 +123,13 @@ export default function ChatBox({ className }: ChatBoxProps) {
 
   const handleSendMessage = () => {
     if (!chatMessage.trim()) return;
+    if (!socket || !isConnected || !isAuthenticated) {
+      alert("Not connected to chat. Please refresh the page.");
+      return;
+    }
 
-    const messageId = Date.now().toString();
-    const newMessage: ChatMessage = {
-      id: messageId,
-      username: "Player1", // In a real app, this would be the user's name
-      message: chatMessage,
-      timestamp: new Date(),
-      displayText: "",
-      isAnimating: true,
-    };
-
-    setChatMessages((prev) => [...prev, newMessage]);
-    animateText(chatMessage, messageId);
+    // Send message via socket
+    socket.emit("sendMessage", { message: chatMessage.trim() });
     setChatMessage("");
   };
 
@@ -85,7 +144,22 @@ export default function ChatBox({ className }: ChatBoxProps) {
     <div className={className}>
       <Card className="h-full flex flex-col">
         <CardHeader>
-          <CardTitle className="text-lg">Live Chat</CardTitle>
+          <CardTitle className="text-lg">
+            Live Chat
+            {!isConnected && (
+              <span className="text-xs text-muted-foreground ml-2">
+                (Connecting...)
+              </span>
+            )}
+            {isConnected && !isAuthenticated && (
+              <span className="text-xs text-muted-foreground ml-2">
+                (Authenticating...)
+              </span>
+            )}
+            {isConnected && isAuthenticated && (
+              <span className="text-xs text-green-500 ml-2">(Connected)</span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex-grow flex flex-col">
           {/* Chat Messages */}
@@ -97,7 +171,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
                     {msg.username}:
                   </span>
                   <span className="text-xs text-muted-foreground retro">
-                    {msg.timestamp.toLocaleTimeString([], {
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
@@ -124,10 +198,14 @@ export default function ChatBox({ className }: ChatBoxProps) {
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!chatMessage.trim()}
+              disabled={!chatMessage.trim() || !isConnected || !isAuthenticated}
               className="w-full"
             >
-              Send Message
+              {!isConnected
+                ? "Connecting..."
+                : !isAuthenticated
+                ? "Authenticating..."
+                : "Send Message"}
             </Button>
           </div>
         </CardContent>
