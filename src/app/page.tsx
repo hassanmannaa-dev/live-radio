@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -27,6 +28,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [selectedAvatar, setSelectedAvatar] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleContinue = async () => {
     if (!name.trim() || selectedAvatar === null) {
@@ -37,8 +39,8 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      // Call API endpoint
-      const response = await fetch("/api/user-setup", {
+      // Call backend API endpoint for user registration
+      const response = await fetch("http://localhost:5000/api/user/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -49,13 +51,21 @@ export default function Home() {
         }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        console.log("User setup successful:", data);
-        // Handle success (e.g., redirect or show success message)
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        console.log("User registration successful:", data);
+        // Store user info in localStorage for later use
+        if (data.user) {
+          localStorage.setItem("userId", data.user.id);
+          localStorage.setItem("userName", data.user.name);
+          localStorage.setItem("userAvatar", data.user.avatarId.toString());
+        }
+        // Redirect to radio page
+        router.push("/radio");
       } else {
-        console.error("Failed to setup user");
-        alert("Failed to setup user. Please try again.");
+        console.error("Failed to register user:", data.error);
+        alert(data.error || "Failed to register user. Please try again.");
       }
     } catch (error) {
       console.error("Error calling API:", error);
