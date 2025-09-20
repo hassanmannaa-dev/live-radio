@@ -198,7 +198,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
         </CardHeader>
         <CardContent className="flex-grow flex flex-col">
           {/* Chat Messages */}
-          <div className="flex-grow overflow-y-auto space-y-1 mb-4 p-2 bg-muted/20 rounded border-2 border-foreground min-h-0">
+          <div className="flex-grow overflow-y-auto overflow-x-hidden space-y-1 mb-4 p-2 bg-muted/20 rounded border-2 border-foreground min-h-0 max-h-128">
             {chatMessages.map((msg, index) => {
               const showUserInfo = shouldShowUserInfo(msg, index);
               const avatarContent = getAvatarContent(
@@ -236,7 +236,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
                     </div>
                   )}
                   <div
-                    className={`text-sm retro ${
+                    className={`text-sm retro break-words overflow-wrap-anywhere ${
                       showUserInfo ? "ml-8" : "ml-8"
                     }`}
                   >
@@ -252,7 +252,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
           </div>
 
           {/* Chat Input */}
-          <div className="space-y-2 flex-shrink-0">
+          <div className="space-y-6 flex-shrink-0">
             <Textarea
               placeholder="Type your message..."
               value={chatMessage}
