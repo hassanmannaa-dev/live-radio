@@ -9,6 +9,11 @@ import {
 } from "@/components/ui/8bit/card";
 import { Button } from "@/components/ui/8bit/button";
 import { Textarea } from "@/components/ui/8bit/textarea";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/8bit/avatar";
 import { useSocket } from "@/contexts/SocketContext";
 
 interface ChatMessage {
@@ -40,6 +45,36 @@ export default function ChatBox({ className }: ChatBoxProps) {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected, isAuthenticated } = useSocket();
+
+  // Helper function to determine if message should show user info
+  const shouldShowUserInfo = (
+    currentMsg: ChatMessage,
+    index: number
+  ): boolean => {
+    if (index === 0) return true; // Always show for first message
+
+    const previousMsg = chatMessages[index - 1];
+    return (
+      !previousMsg ||
+      previousMsg.userId !== currentMsg.userId ||
+      previousMsg.username !== currentMsg.username
+    );
+  };
+
+  // Helper function to generate avatar image URL or fallback
+  const getAvatarContent = (avatarId?: number, username?: string) => {
+    if (avatarId) {
+      // Use the same avatar pattern as the registration page
+      return {
+        src: `https://i.pravatar.cc/150?img=${avatarId}`,
+        fallback: username?.charAt(0).toUpperCase() || "?",
+      };
+    }
+    return {
+      src: undefined,
+      fallback: username?.charAt(0).toUpperCase() || "?",
+    };
+  };
 
   // Setup socket event listeners
   useEffect(() => {
@@ -163,26 +198,56 @@ export default function ChatBox({ className }: ChatBoxProps) {
         </CardHeader>
         <CardContent className="flex-grow flex flex-col">
           {/* Chat Messages */}
-          <div className="flex-grow overflow-y-auto space-y-3 mb-4 p-2 bg-muted/20 rounded border-2 border-foreground min-h-0">
-            {chatMessages.map((msg) => (
-              <div key={msg.id} className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-primary retro">
-                    {msg.username}:
-                  </span>
-                  <span className="text-xs text-muted-foreground retro">
-                    {new Date(msg.timestamp).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
+          <div className="flex-grow overflow-y-auto space-y-1 mb-4 p-2 bg-muted/20 rounded border-2 border-foreground min-h-0">
+            {chatMessages.map((msg, index) => {
+              const showUserInfo = shouldShowUserInfo(msg, index);
+              const avatarContent = getAvatarContent(
+                msg.avatarId,
+                msg.username
+              );
+
+              return (
+                <div
+                  key={msg.id}
+                  className={`${showUserInfo ? "space-y-1 mt-3" : "mt-1"}`}
+                >
+                  {showUserInfo && (
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="size-6">
+                        {avatarContent.src && (
+                          <AvatarImage
+                            src={avatarContent.src}
+                            alt={`${msg.username}'s avatar`}
+                          />
+                        )}
+                        <AvatarFallback className="text-xs">
+                          {avatarContent.fallback}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-xs text-primary retro">
+                        {msg.username}:
+                      </span>
+                      <span className="text-xs text-muted-foreground retro">
+                        {new Date(msg.timestamp).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className={`text-sm retro ${
+                      showUserInfo ? "ml-8" : "ml-8"
+                    }`}
+                  >
+                    {msg.displayText}
+                    {msg.isAnimating && (
+                      <span className="animate-pulse">|</span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-sm retro">
-                  {msg.displayText}
-                  {msg.isAnimating && <span className="animate-pulse">|</span>}
-                </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={chatEndRef} />
           </div>
 
