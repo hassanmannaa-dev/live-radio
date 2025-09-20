@@ -14,6 +14,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/components/ui/8bit/avatar";
+import { ScrollArea } from "@/components/ui/8bit/scroll-area";
 import { useSocket } from "@/contexts/SocketContext";
 
 interface ChatMessage {
@@ -198,58 +199,66 @@ export default function ChatBox({ className }: ChatBoxProps) {
         </CardHeader>
         <CardContent className="flex-grow flex flex-col">
           {/* Chat Messages */}
-          <div className="flex-grow overflow-y-auto overflow-x-hidden space-y-1 mb-4 p-2 bg-muted/20 rounded border-2 border-foreground min-h-0 max-h-128">
-            {chatMessages.map((msg, index) => {
-              const showUserInfo = shouldShowUserInfo(msg, index);
-              const avatarContent = getAvatarContent(
-                msg.avatarId,
-                msg.username
-              );
+          <ScrollArea className="flex-grow mb-4 bg-muted/20 rounded border-2 border-foreground min-h-0 max-h-128">
+            <div className="space-y-1 p-2 overflow-hidden">
+              {chatMessages.map((msg, index) => {
+                const showUserInfo = shouldShowUserInfo(msg, index);
+                const avatarContent = getAvatarContent(
+                  msg.avatarId,
+                  msg.username
+                );
 
-              return (
-                <div
-                  key={msg.id}
-                  className={`${showUserInfo ? "space-y-1 mt-3" : "mt-1"}`}
-                >
-                  {showUserInfo && (
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="size-6">
-                        {avatarContent.src && (
-                          <AvatarImage
-                            src={avatarContent.src}
-                            alt={`${msg.username}'s avatar`}
-                          />
-                        )}
-                        <AvatarFallback className="text-xs">
-                          {avatarContent.fallback}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-xs text-primary retro">
-                        {msg.username}:
-                      </span>
-                      <span className="text-xs text-muted-foreground retro">
-                        {new Date(msg.timestamp).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                  )}
+                return (
                   <div
-                    className={`text-sm retro break-words overflow-wrap-anywhere ${
-                      showUserInfo ? "ml-8" : "ml-8"
-                    }`}
+                    key={msg.id}
+                    className={`${
+                      showUserInfo ? "space-y-1 mt-3" : "mt-1"
+                    } max-w-full`}
                   >
-                    {msg.displayText}
-                    {msg.isAnimating && (
-                      <span className="animate-pulse">|</span>
+                    {showUserInfo && (
+                      <div className="flex items-center space-x-2">
+                        <Avatar className="size-6">
+                          {avatarContent.src && (
+                            <AvatarImage
+                              src={avatarContent.src}
+                              alt={`${msg.username}'s avatar`}
+                            />
+                          )}
+                          <AvatarFallback className="text-xs">
+                            {avatarContent.fallback}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-xs text-primary retro">
+                          {msg.username}:
+                        </span>
+                        <span className="text-xs text-muted-foreground retro">
+                          {new Date(msg.timestamp).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
                     )}
+                    <div
+                      className={`text-sm retro break-words overflow-wrap-anywhere word-break break-all max-w-full ${
+                        showUserInfo ? "ml-8" : "ml-8"
+                      }`}
+                      style={{
+                        wordBreak: "break-word",
+                        overflowWrap: "break-word",
+                      }}
+                    >
+                      {msg.displayText}
+                      {msg.isAnimating && (
+                        <span className="animate-pulse">|</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-            <div ref={chatEndRef} />
-          </div>
+                );
+              })}
+              <div ref={chatEndRef} />
+            </div>
+          </ScrollArea>
 
           {/* Chat Input */}
           <div className="space-y-6 flex-shrink-0">
