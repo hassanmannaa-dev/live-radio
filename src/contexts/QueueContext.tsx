@@ -91,8 +91,8 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
       const data = await response.json();
       console.log("Song added to queue:", data);
 
-      // Queue will be updated via socket event automatically
-      // No need for optimistic update since socket events are reliable
+      // Don't optimistically update here - let the socket event handle the update
+      // This prevents visual duplicates when the socket update arrives
 
       return true;
     } catch (error) {
