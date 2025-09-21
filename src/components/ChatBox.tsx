@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/8bit/avatar";
 import { ScrollArea } from "@/components/ui/8bit/scroll-area";
 import { useSocket } from "@/contexts/SocketContext";
+import { useQueue } from "@/contexts/QueueContext";
 
 interface ChatMessage {
   id: string;
@@ -26,6 +27,15 @@ interface ChatMessage {
   timestamp: Date | string;
   displayText: string;
   isAnimating: boolean;
+  isSearchResult?: boolean;
+  searchResults?: SearchResult[];
+}
+
+interface SearchResult {
+  id: string;
+  title: string;
+  artist: string;
+  thumbnail?: string;
 }
 
 interface BackendChatMessage {
@@ -44,8 +54,10 @@ interface ChatBoxProps {
 export default function ChatBox({ className }: ChatBoxProps) {
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const { socket, isConnected, isAuthenticated } = useSocket();
+  const { addToQueue, isInQueue, addingToQueue } = useQueue();
 
   // Helper function to determine if message should show user info
   const shouldShowUserInfo = (
@@ -157,6 +169,144 @@ export default function ChatBox({ className }: ChatBoxProps) {
     }, 50); // 50ms per character for RPG-style effect
   };
 
+  // Function to perform song search
+  const performSearch = async (query: string) => {
+    try {
+      setIsSearching(true);
+      const response = await fetch(
+        `http://localhost:5000/api/search/multiple?query=${encodeURIComponent(
+          query
+        )}&limit=3`
+      );
+
+      if (!response.ok) {
+        throw new Error("Search failed");
+      }
+
+      const data = await response.json();
+
+      // Create a search result message that only the current user can see
+      const searchMessage: ChatMessage = {
+        id: `search-${Date.now()}`,
+        userId: localStorage.getItem("userId") || undefined,
+        username: localStorage.getItem("userName") || "You",
+        avatarId: parseInt(localStorage.getItem("userAvatar") || "1"),
+        message: `/search ${query}`,
+        timestamp: new Date(),
+        displayText: `Search results for "${query}":`,
+        isAnimating: false,
+        isSearchResult: true,
+        searchResults:
+          data.results?.map(
+            (result: {
+              id: string;
+              title: string;
+              artist: string;
+              thumbnail?: string;
+            }) => ({
+              id: result.id,
+              title: result.title,
+              artist: result.artist,
+              thumbnail: result.thumbnail,
+            })
+          ) || [],
+      };
+
+      setChatMessages((prev) => [...prev, searchMessage]);
+    } catch (error) {
+      console.error("Search error:", error);
+
+      // Show error message
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        userId: localStorage.getItem("userId") || undefined,
+        username: "System",
+        message: "Search failed. Please try again.",
+        timestamp: new Date(),
+        displayText: "Search failed. Please try again.",
+        isAnimating: false,
+      };
+
+      setChatMessages((prev) => [...prev, errorMessage]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Function to handle adding song to queue with feedback
+  const handleAddToQueue = async (songId: string, songTitle: string) => {
+    // Check if already in queue or being added
+    if (isInQueue(songId)) {
+      const alreadyInQueueMessage: ChatMessage = {
+        id: `already-${Date.now()}`,
+        userId: localStorage.getItem("userId") || undefined,
+        username: "System",
+        message: `Song already in queue`,
+        timestamp: new Date(),
+        displayText: `⚠️ "${songTitle}" is already in the queue`,
+        isAnimating: false,
+      };
+      setChatMessages((prev) => [...prev, alreadyInQueueMessage]);
+      return;
+    }
+
+    if (addingToQueue.has(songId)) {
+      const addingMessage: ChatMessage = {
+        id: `adding-${Date.now()}`,
+        userId: localStorage.getItem("userId") || undefined,
+        username: "System",
+        message: `Song being added`,
+        timestamp: new Date(),
+        displayText: `⏳ Adding "${songTitle}" to queue...`,
+        isAnimating: false,
+      };
+      setChatMessages((prev) => [...prev, addingMessage]);
+      return;
+    }
+
+    try {
+      const success = await addToQueue(songId);
+
+      if (success) {
+        // Show success message
+        const successMessage: ChatMessage = {
+          id: `success-${Date.now()}`,
+          userId: localStorage.getItem("userId") || undefined,
+          username: "System",
+          message: `Added song to queue`,
+          timestamp: new Date(),
+          displayText: `✅ Added "${songTitle}" to queue`,
+          isAnimating: false,
+        };
+        setChatMessages((prev) => [...prev, successMessage]);
+      } else {
+        // Show error message
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          userId: localStorage.getItem("userId") || undefined,
+          username: "System",
+          message: `Failed to add song`,
+          timestamp: new Date(),
+          displayText: `❌ Failed to add "${songTitle}" to queue`,
+          isAnimating: false,
+        };
+        setChatMessages((prev) => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error("Add to queue error:", error);
+      const errorMessage: ChatMessage = {
+        id: `error-${Date.now()}`,
+        userId: localStorage.getItem("userId") || undefined,
+        username: "System",
+        message: `Failed to add song`,
+        timestamp: new Date(),
+        displayText: `❌ Failed to add "${songTitle}" to queue`,
+        isAnimating: false,
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
   const handleSendMessage = () => {
     if (!chatMessage.trim()) return;
     if (!socket || !isConnected || !isAuthenticated) {
@@ -164,8 +314,22 @@ export default function ChatBox({ className }: ChatBoxProps) {
       return;
     }
 
-    // Send message via socket
-    socket.emit("sendMessage", { message: chatMessage.trim() });
+    const message = chatMessage.trim();
+
+    // Check if this is a search command
+    if (message.startsWith("/search ")) {
+      const searchQuery = message.substring(8).trim(); // Remove "/search " prefix
+      if (searchQuery) {
+        performSearch(searchQuery);
+      } else {
+        alert("Please provide a search query after /search");
+      }
+      setChatMessage("");
+      return;
+    }
+
+    // Send regular message via socket
+    socket.emit("sendMessage", { message });
     setChatMessage("");
   };
 
@@ -252,6 +416,45 @@ export default function ChatBox({ className }: ChatBoxProps) {
                       {msg.isAnimating && (
                         <span className="animate-pulse">|</span>
                       )}
+
+                      {/* Search Results */}
+                      {msg.isSearchResult && msg.searchResults && (
+                        <div className="mt-2 space-y-1">
+                          {msg.searchResults.map((result) => {
+                            const inQueue = isInQueue(result.id);
+                            const adding = addingToQueue.has(result.id);
+
+                            return (
+                              <div
+                                key={result.id}
+                                className={`border border-foreground/20 rounded p-2 transition-colors ${
+                                  inQueue
+                                    ? "bg-green-500/20 border-green-500/50 cursor-not-allowed"
+                                    : adding
+                                    ? "bg-yellow-500/20 border-yellow-500/50 cursor-wait"
+                                    : "hover:bg-muted/30 cursor-pointer"
+                                }`}
+                                onClick={() => {
+                                  if (!inQueue && !adding) {
+                                    handleAddToQueue(result.id, result.title);
+                                  }
+                                }}
+                              >
+                                <div className="text-xs retro text-primary">
+                                  {result.artist} - {result.title}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {inQueue
+                                    ? "✅ Already in queue"
+                                    : adding
+                                    ? "⏳ Adding to queue..."
+                                    : "Click to add to queue"}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
@@ -272,13 +475,20 @@ export default function ChatBox({ className }: ChatBoxProps) {
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!chatMessage.trim() || !isConnected || !isAuthenticated}
+              disabled={
+                !chatMessage.trim() ||
+                !isConnected ||
+                !isAuthenticated ||
+                isSearching
+              }
               className="w-full"
             >
               {!isConnected
                 ? "Connecting..."
                 : !isAuthenticated
                 ? "Authenticating..."
+                : isSearching
+                ? "Searching..."
                 : "Send Message"}
             </Button>
           </div>
