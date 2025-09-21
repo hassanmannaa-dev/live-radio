@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -8,61 +7,73 @@ import {
   CardTitle,
 } from "@/components/ui/8bit/card";
 import { Progress } from "@/components/ui/8bit/progress";
-
-interface CurrentSong {
-  title: string;
-  artist: string;
-  duration: string;
-  currentTime: string;
-}
+import { useMusicPlayer } from "@/contexts/MusicPlayerContext";
 
 interface MusicPlayerProps {
-  currentSong: CurrentSong;
   className?: string;
 }
 
 export default function MusicPlayer({
-  currentSong,
   className,
 }: MusicPlayerProps) {
-  const [progress, setProgress] = useState(0);
-
-  // Simulate progress bar movement
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        const newProgress = prev + 0.5;
-        return newProgress >= 100 ? 0 : newProgress;
-      });
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, []);
+  const {
+    currentSong,
+    isPlaying,
+    progress,
+    formattedCurrentTime,
+    formattedDuration,
+  } = useMusicPlayer();
 
   return (
     <div className={className}>
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Now Playing</CardTitle>
+          <CardTitle className="text-xl">
+            Now Playing
+            {isPlaying && (
+              <span className="text-xs text-green-500 ml-2">(Live)</span>
+            )}
+            {!isPlaying && currentSong && (
+              <span className="text-xs text-muted-foreground ml-2">(Paused)</span>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="text-center">
-            <h3 className="text-lg retro">{currentSong.title}</h3>
-            <p className="text-muted-foreground retro">{currentSong.artist}</p>
-          </div>
+          {currentSong ? (
+            <>
+              <div className="text-center">
+                <h3 className="text-lg retro">{currentSong.title}</h3>
+                <p className="text-muted-foreground retro">{currentSong.artist}</p>
+                {currentSong.album && (
+                  <p className="text-sm text-muted-foreground retro">
+                    from {currentSong.album}
+                  </p>
+                )}
+              </div>
 
-          <div className="space-y-2">
-            <Progress
-              value={progress}
-              variant="retro"
-              className="h-6"
-              progressBg="bg-green-500"
-            />
-            <div className="flex justify-between text-sm retro text-muted-foreground">
-              <span>{currentSong.currentTime}</span>
-              <span>{currentSong.duration}</span>
+              <div className="space-y-2">
+                <Progress
+                  value={progress}
+                  variant="retro"
+                  className="h-6"
+                  progressBg="bg-green-500"
+                />
+                <div className="flex justify-between text-sm retro text-muted-foreground">
+                  <span>{formattedCurrentTime}</span>
+                  <span>{formattedDuration}</span>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-muted-foreground retro">
+                No song currently playing
+              </div>
+              <div className="text-xs text-muted-foreground retro mt-2">
+                Add songs to the queue to start listening!
+              </div>
             </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

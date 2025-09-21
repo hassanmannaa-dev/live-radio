@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ChatBox from "@/components/ChatBox";
 import Queue from "@/components/Queue";
@@ -8,16 +8,10 @@ import MusicPlayer from "@/components/MusicPlayer";
 import Visualization from "@/components/Visualization";
 import { SocketProvider, useSocket } from "@/contexts/SocketContext";
 import { QueueProvider } from "@/contexts/QueueContext";
+import { MusicPlayerProvider } from "@/contexts/MusicPlayerContext";
 
 // Inner component that has access to socket context
 function RadioPageContent() {
-  const [currentSong] = useState({
-    title: "Retro Wave Runner",
-    artist: "NeonBeats",
-    duration: "3:42",
-    currentTime: "1:23",
-  });
-
   const { authenticateUser, isConnected } = useSocket();
   const router = useRouter();
 
@@ -52,8 +46,8 @@ function RadioPageContent() {
           {/* Visualization Component */}
           <Visualization />
 
-          {/* Music Player Component */}
-          <MusicPlayer currentSong={currentSong} />
+          {/* Music Player Component - Now receives data from MusicPlayerContext */}
+          <MusicPlayer />
         </div>
 
         {/* Right Section - Chat Box Component */}
@@ -70,7 +64,9 @@ export default function RadioPage() {
   return (
     <SocketProvider>
       <QueueProvider>
-        <RadioPageContent />
+        <MusicPlayerProvider>
+          <RadioPageContent />
+        </MusicPlayerProvider>
       </QueueProvider>
     </SocketProvider>
   );
