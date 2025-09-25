@@ -7,40 +7,7 @@ import Queue from "@/components/Queue";
 import MusicPlayer from "@/components/MusicPlayer";
 import Visualization from "@/components/Visualization";
 import { SocketProvider, useSocket } from "@/contexts/SocketContext";
-
-// Mock data for demonstration
-const upcomingSongs = [
-  {
-    id: 1,
-    title: "Neon Dreams",
-    artist: "SynthWave",
-    avatar: "https://i.pravatar.cc/150?img=11",
-  },
-  {
-    id: 2,
-    title: "Pixel Paradise",
-    artist: "8BitBeats",
-    avatar: "https://i.pravatar.cc/150?img=12",
-  },
-  {
-    id: 3,
-    title: "Digital Sunset",
-    artist: "RetroVibes",
-    avatar: "https://i.pravatar.cc/150?img=13",
-  },
-  {
-    id: 4,
-    title: "Cyber City",
-    artist: "ChipTune",
-    avatar: "https://i.pravatar.cc/150?img=14",
-  },
-  {
-    id: 5,
-    title: "Electric Love",
-    artist: "WaveForm",
-    avatar: "https://i.pravatar.cc/150?img=15",
-  },
-];
+import { QueueProvider } from "@/contexts/QueueContext";
 
 // Inner component that has access to socket context
 function RadioPageContent() {
@@ -80,7 +47,7 @@ function RadioPageContent() {
         {/* Left Section - Main Player */}
         <div className="lg:col-span-2 flex flex-col space-y-4">
           {/* Queue Component */}
-          <Queue songs={upcomingSongs} />
+          <Queue />
 
           {/* Visualization Component */}
           <Visualization />
@@ -98,11 +65,13 @@ function RadioPageContent() {
   );
 }
 
-// Main component wrapped with SocketProvider
+// Main component wrapped with providers
 export default function RadioPage() {
   return (
     <SocketProvider>
-      <RadioPageContent />
+      <QueueProvider>
+        <RadioPageContent />
+      </QueueProvider>
     </SocketProvider>
   );
 }
