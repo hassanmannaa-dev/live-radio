@@ -143,55 +143,23 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
       setQueue(data.playlist || []);
     };
 
-    const handlePrepare = (data: any) => {
-      console.log("🎵 Now preparing:", data);
-      const song: QueueSong = {
-        id: data.id,
-        title: data.title,
-        artist: "Unknown Artist",
-        thumbnail: data.thumbnail,
-      };
-      setCurrentSong(song);
-    };
-
-    const handleStart = (data: any) => {
-      console.log("🎵 Now playing:", data);
-      // Keep current song as playing
-    };
-
-    const handleEnded = (data: any) => {
-      console.log("🎵 Song ended:", data);
-      setCurrentSong(null);
-    };
-
-    const handleNowPlaying = (data: any) => {
-      console.log("🎵 Now playing state:", data);
-      setQueue(data.queue || []);
-      if (data.nowPlaying) {
-        const song: QueueSong = {
-          id: data.nowPlaying.id,
-          title: data.nowPlaying.title,
-          artist: "Unknown Artist",
-          thumbnail: data.nowPlaying.thumbnail,
-        };
-        setCurrentSong(song);
-      } else {
-        setCurrentSong(null);
-      }
+    const handleRadioUpdate = (data: {
+      currentSong: QueueSong | null;
+      isPlaying: boolean;
+      startTime: number;
+      position: number;
+      listenerCount: number;
+    }) => {
+      console.log("📻 Radio update:", data);
+      setCurrentSong(data.currentSong || null);
     };
 
     socket.on("playlistUpdate", handlePlaylistUpdate);
-    socket.on("prepare", handlePrepare);
-    socket.on("start", handleStart);
-    socket.on("ended", handleEnded);
-    socket.on("nowPlaying", handleNowPlaying);
+    socket.on("radioUpdate", handleRadioUpdate);
 
     return () => {
       socket.off("playlistUpdate", handlePlaylistUpdate);
-      socket.off("prepare", handlePrepare);
-      socket.off("start", handleStart);
-      socket.off("ended", handleEnded);
-      socket.off("nowPlaying", handleNowPlaying);
+      socket.off("radioUpdate", handleRadioUpdate);
     };
   }, [socket]);
 
