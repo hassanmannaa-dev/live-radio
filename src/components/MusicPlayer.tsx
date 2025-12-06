@@ -37,6 +37,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isAudioActuallyPlaying, setIsAudioActuallyPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<Song | null>(null);
   const [audioEnabled] = useState(audioAlreadyEnabled);
   const [listenerCount, setListenerCount] = useState(0);
@@ -169,8 +170,12 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
   }, [socket, isAuthenticated, audioEnabled]);
 
   // Update progress and current time based on elapsed time
+  // Only animate when audio is actually playing (or if audio isn't enabled, show server state)
   useEffect(() => {
     if (!isPlaying || !currentTrack) return;
+
+    // If audio is enabled but not actually playing yet, don't animate the progress
+    if (audioEnabled && !isAudioActuallyPlaying) return;
 
     const interval = setInterval(() => {
       if (lastUpdateRef.current) {
@@ -186,7 +191,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
     }, 100);
 
     return () => clearInterval(interval);
-  }, [isPlaying, currentTrack]);
+  }, [isPlaying, currentTrack, audioEnabled, isAudioActuallyPlaying]);
 
   return (
     <div className={className}>
@@ -202,6 +207,22 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
             crossOrigin="anonymous"
             onLoadedMetadata={() => {
               console.log('Audio metadata loaded');
+            }}
+            onPlaying={() => {
+              console.log('▶️ Audio actually started playing');
+              setIsAudioActuallyPlaying(true);
+              // Reset time to 0 when audio actually starts (local playback begins fresh)
+              setCurrentTime(0);
+              setProgress(0);
+              lastUpdateRef.current = { position: 0, timestamp: Date.now() };
+            }}
+            onPause={() => {
+              console.log('⏸️ Audio paused');
+              setIsAudioActuallyPlaying(false);
+            }}
+            onWaiting={() => {
+              console.log('⏳ Audio waiting/buffering');
+              setIsAudioActuallyPlaying(false);
             }}
             onEnded={() => {
               console.log('🔄 Audio stream ended, reconnecting...');
@@ -245,13 +266,13 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
 
           <div className="space-y-2">
             <Progress
-              value={progress}
+              value={audioEnabled && !isAudioActuallyPlaying ? 0 : progress}
               variant="retro"
               className="h-6"
-              progressBg={isPlaying ? "bg-green-500" : "bg-gray-500"}
+              progressBg={isAudioActuallyPlaying ? "bg-green-500" : "bg-gray-500"}
             />
             <div className="flex justify-between text-sm retro text-muted-foreground">
-              <span>{formatTime(currentTime)}</span>
+              <span>{formatTime(audioEnabled && !isAudioActuallyPlaying ? 0 : currentTime)}</span>
               <span>
                 {currentTrack?.duration ? formatTime(currentTrack.duration) : '0:00'}
               </span>
@@ -261,9 +282,14 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
           {/* Playback status */}
           <div className="text-center space-y-1">
             <span className={`text-xs retro ${
-              isPlaying ? 'text-green-500' : 'text-muted-foreground'
+              isAudioActuallyPlaying ? 'text-green-500' :
+              (isPlaying && audioEnabled) ? 'text-yellow-500' : 'text-muted-foreground'
             }`}>
-              {isPlaying ? 'Playing' : currentTrack ? 'Waiting...' : 'Idle'}
+              {isPlaying
+                ? (audioEnabled
+                    ? (isAudioActuallyPlaying ? 'Playing' : 'Buffering...')
+                    : 'Playing')
+                : currentTrack ? 'Waiting...' : 'Idle'}
             </span>
           </div>
         </CardContent>
