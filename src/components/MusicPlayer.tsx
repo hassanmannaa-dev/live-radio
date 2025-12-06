@@ -40,7 +40,20 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [listenerCount, setListenerCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const lastUpdateRef = useRef<{ position: number; timestamp: number } | null>(null);
+  const lastSongIdRef = useRef<string | null>(null);
+  const audioEnabledRef = useRef(false);
+  const isPlayingRef = useRef(false);
   const { socket, isAuthenticated } = useSocket();
+
+  // Keep refs in sync with state for use in event handlers
+  useEffect(() => {
+    audioEnabledRef.current = audioEnabled;
+  }, [audioEnabled]);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   // Fetch initial radio status via HTTP
   const fetchRadioStatus = async () => {
@@ -55,6 +68,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
         setListenerCount(data.listenerCount);
         if (data.currentSong && data.isPlaying) {
           setProgress((data.position / data.currentSong.duration) * 100);
+          lastUpdateRef.current = { position: data.position, timestamp: Date.now() };
         }
       }
     } catch (error) {
@@ -85,6 +99,7 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
         console.log('🔊 Calling play...');
         await audioRef.current.play();
         setAudioEnabled(true);
+        audioEnabledRef.current = true;
         console.log('🔊 Audio enabled and streaming');
       } catch (error) {
         console.log('❌ Failed to enable audio:', error);
@@ -103,10 +118,23 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
     if (!isPlaying && audioRef.current && audioEnabled) {
       audioRef.current.pause();
       audioRef.current.src = "";
-      setAudioEnabled(false);
-      console.log('🔇 Audio stopped - nothing playing');
+      // Keep audioEnabled true so we auto-reconnect when next song starts
+      console.log('🔇 Audio paused - waiting for next song');
     }
   }, [isPlaying, audioEnabled]);
+
+  // Auto-reconnect when song starts playing and audio was previously enabled
+  useEffect(() => {
+    if (isPlaying && audioEnabled && currentTrack && audioRef.current) {
+      // Check if audio is not already playing
+      if (audioRef.current.paused || !audioRef.current.src) {
+        console.log('🔄 Auto-reconnecting audio for new song...');
+        audioRef.current.src = "http://localhost:5000/api/radio/stream";
+        audioRef.current.load();
+        audioRef.current.play().catch(console.error);
+      }
+    }
+  }, [isPlaying, audioEnabled, currentTrack]);
 
   // Handle socket events for radio state
   useEffect(() => {
@@ -114,6 +142,12 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
 
     const handleRadioUpdate = (data: RadioState) => {
       console.log('📻 Radio update:', data);
+
+      // Detect song change
+      const newSongId = data.currentSong?.id || null;
+      const songChanged = newSongId !== lastSongIdRef.current;
+      lastSongIdRef.current = newSongId;
+
       setCurrentTrack(data.currentSong);
       setIsPlaying(data.isPlaying);
       setCurrentTime(data.position);
@@ -121,8 +155,18 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
 
       if (data.currentSong && data.isPlaying) {
         setProgress((data.position / data.currentSong.duration) * 100);
+        lastUpdateRef.current = { position: data.position, timestamp: Date.now() };
+
+        // If song changed and audio was enabled, reconnect the stream
+        if (songChanged && audioEnabled && audioRef.current) {
+          console.log('🎵 Song changed, reconnecting audio stream...');
+          audioRef.current.src = "http://localhost:5000/api/radio/stream";
+          audioRef.current.load();
+          audioRef.current.play().catch(console.error);
+        }
       } else {
         setProgress(0);
+        lastUpdateRef.current = null;
       }
 
       // If nothing is playing, stop the audio
@@ -153,19 +197,22 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
     };
   }, [socket, isAuthenticated, audioEnabled]);
 
-  // Update progress and current time
+  // Update progress and current time based on elapsed time
   useEffect(() => {
     if (!isPlaying || !currentTrack) return;
 
     const interval = setInterval(() => {
-      if (audioRef.current && !audioRef.current.paused) {
-        const current = audioRef.current.currentTime;
-        const duration = audioRef.current.duration || currentTrack.duration || 1;
+      if (lastUpdateRef.current) {
+        const elapsed = (Date.now() - lastUpdateRef.current.timestamp) / 1000;
+        const current = lastUpdateRef.current.position + elapsed;
+        const duration = currentTrack.duration || 1;
 
-        setCurrentTime(current);
-        setProgress((current / duration) * 100);
+        // Cap at duration to avoid overflow
+        const cappedCurrent = Math.min(current, duration);
+        setCurrentTime(cappedCurrent);
+        setProgress((cappedCurrent / duration) * 100);
       }
-    }, 1000);
+    }, 100);
 
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack]);
@@ -185,11 +232,26 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
             onLoadedMetadata={() => {
               console.log('Audio metadata loaded');
             }}
+            onEnded={() => {
+              console.log('🔄 Audio stream ended, reconnecting...');
+              if (audioRef.current && audioEnabledRef.current && isPlayingRef.current) {
+                audioRef.current.src = "http://localhost:5000/api/radio/stream";
+                audioRef.current.load();
+                audioRef.current.play().catch(console.error);
+              }
+            }}
+            onStalled={() => {
+              console.log('⏸️ Audio stalled, attempting to resume...');
+              if (audioRef.current && audioEnabledRef.current && isPlayingRef.current) {
+                audioRef.current.play().catch(console.error);
+              }
+            }}
             onError={(e) => {
               // Only log error if we actually have a source set
               if (audioRef.current?.src && audioRef.current.src !== window.location.href) {
-                console.error('Audio error:', e);
-                setAudioEnabled(false);
+                console.log('⚠️ Audio error (will auto-reconnect on next song):', e);
+                // Don't disable audio - user intent should persist
+                // The reconnection logic will handle getting it playing again
               }
             }}
           />
@@ -246,12 +308,9 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
               isPlaying ? 'text-green-500' : 'text-muted-foreground'
             }`}>
               {!audioEnabled && currentTrack ? '🔇 Audio Disabled' :
-               isPlaying ? '▶️ Playing' :
-               currentTrack ? '⏸️ Prepared' : '⏹️ Idle'}
+               isPlaying ? 'Playing' :
+               currentTrack ? 'Prepared' : 'Idle'}
             </span>
-            <div className="text-xs text-muted-foreground retro">
-              👥 {listenerCount} {listenerCount === 1 ? 'listener' : 'listeners'}
-            </div>
           </div>
         </CardContent>
       </Card>
