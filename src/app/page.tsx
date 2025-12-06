@@ -9,20 +9,67 @@ import {
   CardTitle,
 } from "@/components/ui/8bit/card";
 import { Input } from "@/components/ui/8bit/input";
-import {
-  Avatar,
-  AvatarImage,
-  AvatarFallback,
-} from "@/components/ui/8bit/avatar";
 import { Button } from "@/components/ui/8bit/button";
 
-// Fake avatar images for demo
-const avatarOptions = [
-  { id: 1, src: "https://i.pravatar.cc/150?img=1", alt: "Avatar 1" },
-  { id: 2, src: "https://i.pravatar.cc/150?img=2", alt: "Avatar 2" },
-  { id: 3, src: "https://i.pravatar.cc/150?img=3", alt: "Avatar 3" },
-  { id: 4, src: "https://i.pravatar.cc/150?img=4", alt: "Avatar 4" },
+// Avatar emojis matching backend
+const avatarEmojis = [
+  "😀",
+  "😎",
+  "🤓",
+  "😇",
+  "🥸",
+  "🤠",
+  "🥳",
+  "😋",
+  "🙂",
+  "😌",
+  "🐶",
+  "🐱",
+  "🐭",
+  "🐹",
+  "🐰",
+  "🦊",
+  "🐻",
+  "🐼",
+  "🐨",
+  "🐯",
+  "🚀",
+  "⭐",
+  "🎵",
+  "🎸",
+  "🎤",
+  "🎧",
+  "🎹",
+  "🥁",
+  "🎺",
+  "🎷",
+  "🍕",
+  "🍔",
+  "🍟",
+  "🌮",
+  "🍰",
+  "🍪",
+  "🍩",
+  "☕",
+  "🧋",
+  "🍓",
+  "⚽",
+  "🏀",
+  "🎾",
+  "🏓",
+  "🎮",
+  "🕹️",
+  "🎯",
+  "🎲",
+  "🃏",
+  "🎪",
 ];
+
+const avatarOptions = avatarEmojis.map((emoji, index) => ({
+  id: index + 1,
+  emoji: emoji,
+  alt: `Avatar ${index + 1}`,
+}));
 
 export default function Home() {
   const [name, setName] = useState("");
@@ -32,7 +79,18 @@ export default function Home() {
 
   const handleContinue = async () => {
     if (!name.trim() || selectedAvatar === null) {
-      alert("Please enter your name and select an avatar");
+      alert("Please enter your username and select an avatar");
+      return;
+    }
+
+    // Validate username format (same as backend)
+    if (name.length < 2 || name.length > 20) {
+      alert("Username must be between 2 and 20 characters");
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      alert("Username can only contain letters, numbers, underscore, or dash");
       return;
     }
 
@@ -53,19 +111,19 @@ export default function Home() {
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (response.ok && data.user) {
         console.log("User registration successful:", data);
         // Store user info in localStorage for later use
-        if (data.user) {
-          localStorage.setItem("userId", data.user.id);
-          localStorage.setItem("userName", data.user.name);
-          localStorage.setItem("userAvatar", data.user.avatarId.toString());
-        }
+        localStorage.setItem("userId", data.user.id);
+        localStorage.setItem("userName", data.user.name || name.trim());
+        localStorage.setItem("userAvatar", String(data.user.avatarId || selectedAvatar));
+        localStorage.setItem("user", JSON.stringify(data.user));
         // Redirect to radio page
         router.push("/radio");
       } else {
         console.error("Failed to register user:", data.error);
-        alert(data.error || "Failed to register user. Please try again.");
+        const errorMessage = typeof data.error === 'string' ? data.error : "Failed to register user. Please try again.";
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Error calling API:", error);
@@ -87,16 +145,20 @@ export default function Home() {
           {/* Name Input */}
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium retro">
-              Enter your name:
+              Enter your username:
             </label>
             <Input
               id="name"
               type="text"
-              placeholder="Your name"
+              placeholder="Your username"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full"
+              maxLength={20}
             />
+            <div className="text-xs text-muted-foreground">
+              2-20 characters, letters, numbers, underscore, or dash only
+            </div>
           </div>
 
           {/* Avatar Selection */}
@@ -104,23 +166,19 @@ export default function Home() {
             <label className="text-sm font-medium retro">
               Choose your avatar:
             </label>
-            <div className="grid grid-cols-4 gap-4 justify-items-center">
+            <div className="grid grid-cols-5 gap-3 justify-items-center max-h-48 overflow-y-auto">
               {avatarOptions.map((avatar) => (
                 <button
                   key={avatar.id}
                   onClick={() => setSelectedAvatar(avatar.id)}
-                  className={`relative transition-all duration-200 ${
+                  className={`relative w-14 h-14 text-2xl border-2 rounded-full flex items-center justify-center transition-all duration-200 ${
                     selectedAvatar === avatar.id
-                      ? "scale-110 ring-4 ring-primary ring-offset-2 ring-offset-background"
-                      : "hover:scale-105"
+                      ? "border-primary bg-primary/10 scale-110"
+                      : "border-border hover:border-primary hover:scale-105"
                   }`}
+                  title={avatar.alt}
                 >
-                  <Avatar className="w-16 h-16">
-                    <AvatarImage src={avatar.src} alt={avatar.alt} />
-                    <AvatarFallback className="retro">
-                      {avatar.id}
-                    </AvatarFallback>
-                  </Avatar>
+                  {avatar.emoji}
                   {selectedAvatar === avatar.id && (
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                       <span className="text-xs text-primary-foreground">✓</span>
