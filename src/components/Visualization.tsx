@@ -27,8 +27,8 @@ export default function Visualization({
   customGif,
 }: VisualizationProps) {
   const [mode, setMode] = useState<VisualizationMode>("visualizer");
-  const [randomGif] = useState(
-    () => customGif || randomGifs[Math.floor(Math.random() * randomGifs.length)]
+  const [gifIndex, setGifIndex] = useState(() =>
+    customGif ? -1 : Math.floor(Math.random() * randomGifs.length)
   );
   const [isSupported, setIsSupported] = useState<boolean | null>(null);
   const [presetIndex, setPresetIndex] = useState(0);
@@ -212,6 +212,16 @@ export default function Visualization({
     changePreset(newIndex);
   };
 
+  const nextGif = () => {
+    setGifIndex((prev) => (prev + 1) % randomGifs.length);
+  };
+
+  const prevGif = () => {
+    setGifIndex((prev) => (prev - 1 + randomGifs.length) % randomGifs.length);
+  };
+
+  const currentGif = customGif || randomGifs[gifIndex];
+
   const toggleMode = () => {
     setMode(mode === "visualizer" ? "gif" : "visualizer");
   };
@@ -234,7 +244,7 @@ export default function Visualization({
               />
             ) : (
               <Image
-                src={randomGif}
+                src={currentGif}
                 alt="Music Visualization"
                 width={500}
                 height={500}
@@ -246,7 +256,7 @@ export default function Visualization({
 
           {/* Carousel Controls */}
           <div className="flex items-center justify-between w-full gap-2">
-            {showVisualizerMode && presetNames.length > 0 && (
+            {showVisualizerMode && presetNames.length > 0 ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -255,13 +265,24 @@ export default function Visualization({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
+            ) : !showVisualizerMode && !customGif ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={prevGif}
+                title="Previous GIF"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="w-10 h-10" />
             )}
 
             <Button
               variant="outline"
               size="sm"
               onClick={toggleMode}
-              className="flex-1 max-w-48"
+              className="flex-1 max-w-56"
               disabled={isSupported === null || !isSupported}
             >
               {isSupported === null
@@ -269,11 +290,11 @@ export default function Visualization({
                 : !isSupported
                   ? "Visualizer not supported"
                   : mode === "visualizer"
-                    ? "Switch to GIF"
-                    : "Switch to Visualizer"}
+                    ? "GIF"
+                    : "Visualizer"}
             </Button>
 
-            {showVisualizerMode && presetNames.length > 0 && (
+            {showVisualizerMode && presetNames.length > 0 ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -282,6 +303,17 @@ export default function Visualization({
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
+            ) : !showVisualizerMode && !customGif ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={nextGif}
+                title="Next GIF"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="w-10 h-10" />
             )}
           </div>
 
