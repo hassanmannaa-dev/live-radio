@@ -70,7 +70,7 @@ export default function Visualization({
 
   // Initialize visualizer
   const initVisualizer = useCallback(async () => {
-    if (!canvasRef.current || !audioContext || !isSupported) return;
+    if (!canvasRef.current || !audioContext || !isSupported || !containerRef.current) return;
 
     try {
       const butterchurn = await import('butterchurn');
@@ -78,14 +78,18 @@ export default function Visualization({
 
       const canvas = canvasRef.current;
       const container = containerRef.current;
-      const width = container?.clientWidth || 500;
-      const height = container?.clientHeight || 384;
+      const width = container.clientWidth;
+      const height = container.clientHeight;
+
+      // Set canvas actual resolution to match display size
+      canvas.width = width;
+      canvas.height = height;
 
       // Create visualizer
       const visualizer = butterchurn.default.createVisualizer(audioContext, canvas, {
         width,
         height,
-        pixelRatio: window.devicePixelRatio || 1,
+        pixelRatio: 1, // We're already using actual pixel dimensions
       });
 
       visualizerRef.current = visualizer;
@@ -112,14 +116,20 @@ export default function Visualization({
 
   // Handle resize
   useEffect(() => {
-    if (!visualizerRef.current || !containerRef.current) return;
+    if (!visualizerRef.current || !containerRef.current || !canvasRef.current) return;
 
     const handleResize = () => {
       const container = containerRef.current;
-      if (!container || !visualizerRef.current) return;
+      const canvas = canvasRef.current;
+      if (!container || !visualizerRef.current || !canvas) return;
 
       const width = container.clientWidth;
       const height = container.clientHeight;
+
+      // Update canvas resolution
+      canvas.width = width;
+      canvas.height = height;
+
       visualizerRef.current.setRendererSize(width, height);
     };
 
@@ -215,17 +225,12 @@ export default function Visualization({
         <CardContent className="flex flex-col items-center justify-center space-y-2">
           <div
             ref={containerRef}
-            className="w-full h-96 bg-muted rounded-lg overflow-hidden flex items-center justify-center border-4 border-foreground relative"
+            className="w-full h-[500px] bg-muted rounded-lg overflow-hidden flex items-center justify-center border-4 border-foreground relative"
           >
             {showVisualizerMode ? (
               <canvas
                 ref={canvasRef}
-                className="w-full h-full"
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  imageRendering: 'pixelated'
-                }}
+                className="w-full h-full block"
               />
             ) : (
               <Image
