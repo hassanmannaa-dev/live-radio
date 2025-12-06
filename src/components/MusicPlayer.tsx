@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/8bit/card";
 import { Progress } from "@/components/ui/8bit/progress";
 import { useSocket } from "@/contexts/SocketContext";
+import { useAudioContext } from "@/contexts/AudioContextProvider";
 
 interface Song {
   id: string;
@@ -47,6 +48,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
   const audioEnabledRef = useRef(audioAlreadyEnabled);
   const isPlayingRef = useRef(false);
   const { socket, isAuthenticated } = useSocket();
+  const { registerAudioElement } = useAudioContext();
 
   // Keep refs in sync with state for use in event handlers
   useEffect(() => {
@@ -215,6 +217,10 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
               setCurrentTime(0);
               setProgress(0);
               lastUpdateRef.current = { position: 0, timestamp: Date.now() };
+              // Register audio element with AudioContext for visualizer
+              if (audioRef.current) {
+                registerAudioElement(audioRef.current);
+              }
             }}
             onPause={() => {
               console.log('⏸️ Audio paused');

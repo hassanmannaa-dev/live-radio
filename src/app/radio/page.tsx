@@ -8,6 +8,7 @@ import MusicPlayer from "@/components/MusicPlayer";
 import Visualization from "@/components/Visualization";
 import { SocketProvider, useSocket } from "@/contexts/SocketContext";
 import { QueueProvider } from "@/contexts/QueueContext";
+import { AudioContextProvider } from "@/contexts/AudioContextProvider";
 import {
   Card,
   CardContent,
@@ -122,7 +123,9 @@ export default function RadioPage() {
   return (
     <SocketProvider>
       <QueueProvider>
-        <RadioPageContent />
+        <AudioContextProvider>
+          <RadioPageContent />
+        </AudioContextProvider>
       </QueueProvider>
     </SocketProvider>
   );
