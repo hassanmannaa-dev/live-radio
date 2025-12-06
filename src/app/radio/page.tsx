@@ -11,13 +11,6 @@ import { QueueProvider } from "@/contexts/QueueContext";
 
 // Inner component that has access to socket context
 function RadioPageContent() {
-  const [currentSong] = useState({
-    title: "Retro Wave Runner",
-    artist: "NeonBeats",
-    duration: "3:42",
-    currentTime: "1:23",
-  });
-
   const { authenticateUser, isConnected } = useSocket();
   const router = useRouter();
 
@@ -53,7 +46,7 @@ function RadioPageContent() {
           <Visualization />
 
           {/* Music Player Component */}
-          <MusicPlayer currentSong={currentSong} />
+          <MusicPlayer />
         </div>
 
         {/* Right Section - Chat Box Component */}

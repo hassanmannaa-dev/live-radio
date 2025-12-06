@@ -48,10 +48,19 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
   const fetchQueue = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("http://localhost:5000/api/queue");
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      const response = await fetch("http://localhost:5000/api/queue", {
+        headers: {
+          "user-id": userId,
+        },
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch queue");
+        throw new Error("Failed to fetch current state");
       }
 
       const data = await response.json();
@@ -76,10 +85,16 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
       // Mark as being added to prevent duplicates
       setAddingToQueue((prev) => new Set(prev).add(songId));
 
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
       const response = await fetch("http://localhost:5000/api/queue", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "user-id": userId,
         },
         body: JSON.stringify({ id: songId }),
       });
@@ -123,22 +138,60 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
   useEffect(() => {
     if (!socket) return;
 
-    const handlePlaylistUpdate = (playlist: QueueSong[]) => {
-      console.log("📋 Playlist updated:", playlist);
-      setQueue(playlist);
+    const handlePlaylistUpdate = (data: { playlist: QueueSong[] }) => {
+      console.log("📋 Playlist updated:", data);
+      setQueue(data.playlist || []);
     };
 
-    const handleCurrentSongUpdate = (song: QueueSong | null) => {
-      console.log("🎵 Current song updated:", song);
+    const handlePrepare = (data: any) => {
+      console.log("🎵 Now preparing:", data);
+      const song: QueueSong = {
+        id: data.id,
+        title: data.title,
+        artist: "Unknown Artist",
+        thumbnail: data.thumbnail,
+      };
       setCurrentSong(song);
     };
 
+    const handleStart = (data: any) => {
+      console.log("🎵 Now playing:", data);
+      // Keep current song as playing
+    };
+
+    const handleEnded = (data: any) => {
+      console.log("🎵 Song ended:", data);
+      setCurrentSong(null);
+    };
+
+    const handleNowPlaying = (data: any) => {
+      console.log("🎵 Now playing state:", data);
+      setQueue(data.queue || []);
+      if (data.nowPlaying) {
+        const song: QueueSong = {
+          id: data.nowPlaying.id,
+          title: data.nowPlaying.title,
+          artist: "Unknown Artist",
+          thumbnail: data.nowPlaying.thumbnail,
+        };
+        setCurrentSong(song);
+      } else {
+        setCurrentSong(null);
+      }
+    };
+
     socket.on("playlistUpdate", handlePlaylistUpdate);
-    socket.on("currentSongUpdate", handleCurrentSongUpdate);
+    socket.on("prepare", handlePrepare);
+    socket.on("start", handleStart);
+    socket.on("ended", handleEnded);
+    socket.on("nowPlaying", handleNowPlaying);
 
     return () => {
       socket.off("playlistUpdate", handlePlaylistUpdate);
-      socket.off("currentSongUpdate", handleCurrentSongUpdate);
+      socket.off("prepare", handlePrepare);
+      socket.off("start", handleStart);
+      socket.off("ended", handleEnded);
+      socket.off("nowPlaying", handleNowPlaying);
     };
   }, [socket]);
 

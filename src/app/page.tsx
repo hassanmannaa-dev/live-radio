@@ -98,29 +98,32 @@ export default function Home() {
 
     try {
       // Call backend API endpoint for user registration
-      const response = await fetch("http://localhost:5000/register", {
+      const response = await fetch("http://localhost:5000/api/user/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          username: name.trim(),
+          name: name.trim(),
           avatarId: selectedAvatar,
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (response.ok && data.user) {
         console.log("User registration successful:", data);
         // Store user info in localStorage for later use
-        localStorage.setItem("userId", data.userId);
+        localStorage.setItem("userId", data.user.id);
+        localStorage.setItem("userName", data.user.name || name.trim());
+        localStorage.setItem("userAvatar", String(data.user.avatarId || selectedAvatar));
         localStorage.setItem("user", JSON.stringify(data.user));
         // Redirect to radio page
         router.push("/radio");
       } else {
         console.error("Failed to register user:", data.error);
-        alert(data.error || "Failed to register user. Please try again.");
+        const errorMessage = typeof data.error === 'string' ? data.error : "Failed to register user. Please try again.";
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Error calling API:", error);

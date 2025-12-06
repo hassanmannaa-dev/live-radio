@@ -94,7 +94,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
     if (!socket) return;
 
     // Load chat history when connecting
-    const handleChatHistory = (messages: BackendChatMessage[]) => {
+    const handleChatHistory = ({ messages }: { messages: BackendChatMessage[] }) => {
       console.log("📜 Loading chat history:", messages);
       const formattedMessages = messages.map((msg) => ({
         ...msg,
@@ -174,9 +174,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
     try {
       setIsSearching(true);
       const response = await fetch(
-        `http://localhost:5000/api/search/multiple?query=${encodeURIComponent(
-          query
-        )}&limit=3`
+        `http://localhost:5000/api/search?query=${encodeURIComponent(query)}`
       );
 
       if (!response.ok) {
@@ -193,23 +191,19 @@ export default function ChatBox({ className }: ChatBoxProps) {
         avatarId: parseInt(localStorage.getItem("userAvatar") || "1"),
         message: `/search ${query}`,
         timestamp: new Date(),
-        displayText: `Search results for "${query}":`,
+        displayText: `Search result for "${query}":`,
         isAnimating: false,
         isSearchResult: true,
-        searchResults:
-          data.results?.map(
-            (result: {
-              id: string;
-              title: string;
-              artist: string;
-              thumbnail?: string;
-            }) => ({
-              id: result.id,
-              title: result.title,
-              artist: result.artist,
-              thumbnail: result.thumbnail,
-            })
-          ) || [],
+        searchResults: data.song
+          ? [
+              {
+                id: data.song.id,
+                title: data.song.title,
+                artist: data.song.artist || "Unknown Artist",
+                thumbnail: data.song.thumbnail,
+              },
+            ]
+          : [],
       };
 
       setChatMessages((prev) => [...prev, searchMessage]);
