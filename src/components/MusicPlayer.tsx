@@ -30,19 +30,20 @@ interface RadioState {
 
 interface MusicPlayerProps {
   className?: string;
+  audioAlreadyEnabled?: boolean;
 }
 
-export default function MusicPlayer({ className }: MusicPlayerProps) {
+export default function MusicPlayer({ className, audioAlreadyEnabled = false }: MusicPlayerProps) {
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<Song | null>(null);
-  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [audioEnabled] = useState(audioAlreadyEnabled);
   const [listenerCount, setListenerCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const lastUpdateRef = useRef<{ position: number; timestamp: number } | null>(null);
   const lastSongIdRef = useRef<string | null>(null);
-  const audioEnabledRef = useRef(false);
+  const audioEnabledRef = useRef(audioAlreadyEnabled);
   const isPlayingRef = useRef(false);
   const { socket, isAuthenticated } = useSocket();
 
@@ -81,36 +82,6 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Enable audio with user interaction
-  const enableAudio = async () => {
-    console.log('🔊 enableAudio called', {
-      hasAudioRef: !!audioRef.current,
-      audioEnabled,
-      isPlaying
-    });
-
-    if (!audioEnabled && isPlaying && audioRef.current) {
-      try {
-        console.log('🔊 Setting audio source...');
-        audioRef.current.src = "http://localhost:5000/api/radio/stream";
-        audioRef.current.load();
-        console.log('🔊 Calling play...');
-        await audioRef.current.play();
-        setAudioEnabled(true);
-        audioEnabledRef.current = true;
-        console.log('🔊 Audio enabled and streaming');
-      } catch (error) {
-        console.log('❌ Failed to enable audio:', error);
-        // Reset audio state on error
-        if (audioRef.current) {
-          audioRef.current.src = "";
-        }
-      }
-    } else {
-      console.log('🔊 Skipped - conditions not met');
-    }
   };
 
   // Stop audio when nothing is playing
@@ -287,29 +258,12 @@ export default function MusicPlayer({ className }: MusicPlayerProps) {
             </div>
           </div>
 
-          {/* Audio Enable Button */}
-          {!audioEnabled && isPlaying && currentTrack && (
-            <div className="text-center space-y-2">
-              <button
-                onClick={enableAudio}
-                className="px-4 py-2 bg-green-600 text-white rounded retro hover:bg-green-700 transition-colors"
-              >
-                🔊 Click to Enable Audio
-              </button>
-              <p className="text-xs text-muted-foreground retro">
-                Browser requires user interaction to play audio
-              </p>
-            </div>
-          )}
-
           {/* Playback status */}
           <div className="text-center space-y-1">
             <span className={`text-xs retro ${
               isPlaying ? 'text-green-500' : 'text-muted-foreground'
             }`}>
-              {!audioEnabled && currentTrack ? '🔇 Audio Disabled' :
-               isPlaying ? 'Playing' :
-               currentTrack ? 'Prepared' : 'Idle'}
+              {isPlaying ? 'Playing' : currentTrack ? 'Waiting...' : 'Idle'}
             </span>
           </div>
         </CardContent>
