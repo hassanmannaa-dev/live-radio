@@ -5,14 +5,23 @@ import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/8bit/card";
 import { Button } from "@/components/ui/8bit/button";
 import { useAudioContext } from "@/contexts/AudioContextProvider";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eye, EyeOff } from "lucide-react";
 
 const randomGifs = [
-  "https://media.giphy.com/media/3o7TKAXkWwJBawSsfu/giphy.gif",
-  "https://media.giphy.com/media/l0HlvyZMx9K4u5WuY/giphy.gif",
-  "https://media.giphy.com/media/26tn33aiTi1jkl6H6/giphy.gif",
-  "https://media.giphy.com/media/3oKIPEAVLNcZCNOpLa/giphy.gif",
-  "https://media.giphy.com/media/l41lPTfaKeKbwBllm/giphy.gif",
+  "https://media1.tenor.com/m/RdYowW9KtNMAAAAC/dancing-happy-dance.gif",
+  "https://media1.tenor.com/m/lQ9SU3vt_f4AAAAd/cool-fun.gif",
+  "https://media1.tenor.com/m/GM_8ETMrSmAAAAAd/dance-old-man-dancing.gif",
+  "https://media1.tenor.com/m/yV0zFCvJkEYAAAAd/speed-boat.gif",
+  "https://media1.tenor.com/m/8JhcC4OtwC8AAAAC/hatsune-miku-dance.gif",
+  "https://media1.tenor.com/m/Uk3HwkPklK0AAAAd/gangster-dance-with-miku-ganster-dance.gif",
+  "https://media.tenor.com/BL038T2Guc4AAAAi/kuromi-dance-melody-dance.gif",
+  "https://media.tenor.com/vX-qFMkapQQAAAAi/cat-dancing.gif",
+  "https://media.tenor.com/wNA4hiEeUIQAAAAi/cat-meme-cat-dance.gif",
+  "https://media1.tenor.com/m/5JtSeb0T71MAAAAC/dancing-banana.gif",
+  "https://media.tenor.com/axlcoK34Ur4AAAAi/sonic.gif",
+  "https://media1.tenor.com/m/yyofCYnEXksAAAAC/sonic-the-hedgehog-classic-sonic.gif",
+  "https://media1.tenor.com/m/9bB21xJ32YMAAAAC/fearless-year-of-shadow-shadow-the-hedgehog.gif",
+  "https://media1.tenor.com/m/GCfIfzAoCcEAAAAd/fearless-year-of-shadow-year-of-shadow.gif"
 ];
 
 type VisualizationMode = "visualizer" | "gif";
@@ -27,6 +36,7 @@ export default function Visualization({
   customGif,
 }: VisualizationProps) {
   const [mode, setMode] = useState<VisualizationMode>("visualizer");
+  const [isEnabled, setIsEnabled] = useState(true);
   const [gifIndex, setGifIndex] = useState(() =>
     customGif ? -1 : Math.floor(Math.random() * randomGifs.length)
   );
@@ -156,7 +166,7 @@ export default function Visualization({
 
   // Render loop
   useEffect(() => {
-    if (mode !== "visualizer" || !isSupported) {
+    if (!isEnabled || mode !== "visualizer" || !isSupported) {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
         animationFrameRef.current = null;
@@ -178,7 +188,7 @@ export default function Visualization({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [mode, isSupported]);
+  }, [mode, isSupported, isEnabled]);
 
   // Initialize visualizer when in visualizer mode and audio is ready
   useEffect(() => {
@@ -237,7 +247,9 @@ export default function Visualization({
             ref={containerRef}
             className="w-full h-[500px] bg-muted rounded-lg overflow-hidden flex items-center justify-center border-4 border-foreground relative"
           >
-            {showVisualizerMode ? (
+            {!isEnabled ? (
+              <div className="text-muted-foreground">Visualization Off</div>
+            ) : showVisualizerMode ? (
               <canvas
                 ref={canvasRef}
                 className="w-full h-full block"
@@ -248,7 +260,7 @@ export default function Visualization({
                 alt="Music Visualization"
                 width={500}
                 height={500}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-contain"
                 style={{ imageRendering: "pixelated" }}
               />
             )}
@@ -256,7 +268,7 @@ export default function Visualization({
 
           {/* Carousel Controls */}
           <div className="flex items-center justify-between w-full gap-2">
-            {showVisualizerMode && presetNames.length > 0 ? (
+            {isEnabled && showVisualizerMode && presetNames.length > 0 ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -265,7 +277,7 @@ export default function Visualization({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-            ) : !showVisualizerMode && !customGif ? (
+            ) : isEnabled && !showVisualizerMode && !customGif ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -283,7 +295,7 @@ export default function Visualization({
               size="sm"
               onClick={toggleMode}
               className="flex-1 max-w-56"
-              disabled={isSupported === null || !isSupported}
+              disabled={!isEnabled || isSupported === null || !isSupported}
             >
               {isSupported === null
                 ? "Loading..."
@@ -294,7 +306,16 @@ export default function Visualization({
                     : "Visualizer"}
             </Button>
 
-            {showVisualizerMode && presetNames.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsEnabled(!isEnabled)}
+              title={isEnabled ? "Turn off visualization" : "Turn on visualization"}
+            >
+              {isEnabled ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            </Button>
+
+            {isEnabled && showVisualizerMode && presetNames.length > 0 ? (
               <Button
                 variant="ghost"
                 size="icon"
@@ -303,7 +324,7 @@ export default function Visualization({
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-            ) : !showVisualizerMode && !customGif ? (
+            ) : isEnabled && !showVisualizerMode && !customGif ? (
               <Button
                 variant="ghost"
                 size="icon"
