@@ -80,9 +80,9 @@ export default function ChatBox({ className }: ChatBoxProps) {
   // Helper function to generate avatar image URL or fallback
   const getAvatarContent = (avatarId?: number, username?: string) => {
     if (avatarId) {
-      // Use the same avatar pattern as the registration page
+      // Use local profile images from public/profiles folder
       return {
-        src: `https://i.pravatar.cc/150?img=${avatarId}`,
+        src: `/profiles/${avatarId}.png`,
         fallback: username?.charAt(0).toUpperCase() || "?",
       };
     }

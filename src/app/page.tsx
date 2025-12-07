@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -11,64 +12,13 @@ import {
 import { Input } from "@/components/ui/8bit/input";
 import { Button } from "@/components/ui/8bit/button";
 
-// Avatar emojis matching backend
-const avatarEmojis = [
-  "😀",
-  "😎",
-  "🤓",
-  "😇",
-  "🥸",
-  "🤠",
-  "🥳",
-  "😋",
-  "🙂",
-  "😌",
-  "🐶",
-  "🐱",
-  "🐭",
-  "🐹",
-  "🐰",
-  "🦊",
-  "🐻",
-  "🐼",
-  "🐨",
-  "🐯",
-  "🚀",
-  "⭐",
-  "🎵",
-  "🎸",
-  "🎤",
-  "🎧",
-  "🎹",
-  "🥁",
-  "🎺",
-  "🎷",
-  "🍕",
-  "🍔",
-  "🍟",
-  "🌮",
-  "🍰",
-  "🍪",
-  "🍩",
-  "☕",
-  "🧋",
-  "🍓",
-  "⚽",
-  "🏀",
-  "🎾",
-  "🏓",
-  "🎮",
-  "🕹️",
-  "🎯",
-  "🎲",
-  "🃏",
-  "🎪",
-];
+// Profile image options - add images to public/profiles/ folder named 1.png, 2.png, etc.
+const PROFILE_COUNT = 5; // Update this when you add more profile images
 
-const avatarOptions = avatarEmojis.map((emoji, index) => ({
+const avatarOptions = Array.from({ length: PROFILE_COUNT }, (_, index) => ({
   id: index + 1,
-  emoji: emoji,
-  alt: `Avatar ${index + 1}`,
+  src: `/profiles/${index + 1}.png`,
+  alt: `Profile ${index + 1}`,
 }));
 
 export default function Home() {
@@ -166,19 +116,25 @@ export default function Home() {
             <label className="text-sm font-medium retro">
               Choose your avatar:
             </label>
-            <div className="grid grid-cols-5 gap-3 justify-items-center max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-5 gap-3 justify-items-center max-h-48 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {avatarOptions.map((avatar) => (
                 <button
                   key={avatar.id}
                   onClick={() => setSelectedAvatar(avatar.id)}
-                  className={`relative w-14 h-14 text-2xl border-2 rounded-full flex items-center justify-center transition-all duration-200 ${
+                  className={`relative w-14 h-14 border-2 rounded-full flex items-center justify-center transition-all duration-200 overflow-hidden cursor-pointer ${
                     selectedAvatar === avatar.id
                       ? "border-primary bg-primary/10 scale-110"
                       : "border-border hover:border-primary hover:scale-105"
                   }`}
                   title={avatar.alt}
                 >
-                  {avatar.emoji}
+                  <Image
+                    src={avatar.src}
+                    alt={avatar.alt}
+                    width={56}
+                    height={56}
+                    className="w-full h-full object-cover"
+                  />
                   {selectedAvatar === avatar.id && (
                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
                       <span className="text-xs text-primary-foreground">✓</span>
