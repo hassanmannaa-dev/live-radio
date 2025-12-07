@@ -487,9 +487,6 @@ export default function ChatBox({ className }: ChatBoxProps) {
                             }}
                           >
                             {msg.displayText}
-                            {msg.isAnimating && (
-                              <span className="animate-pulse">|</span>
-                            )}
 
                             {/* Search Results */}
                             {msg.isSearchResult && msg.searchResults && (
