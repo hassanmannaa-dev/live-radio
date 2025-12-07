@@ -60,13 +60,31 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Fetch initial radio status via HTTP
+  // Fetch radio status via HTTP
   const fetchRadioStatus = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/status`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/status`, {
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
       if (response.ok) {
         const data: RadioState = await response.json();
-        console.log('📻 Initial radio status:', data);
+
+        // Detect song change
+        const newSongId = data.currentSong?.id || null;
+        const songChanged = newSongId !== lastSongIdRef.current;
+
+        if (songChanged) {
+          console.log('📻 Song changed (via HTTP poll):', data.currentSong?.title);
+          lastSongIdRef.current = newSongId;
+          // Only reset audio playing state if audio is not currently playing
+          // (continuous streams don't pause between songs)
+          if (audioRef.current?.paused) {
+            setIsAudioActuallyPlaying(false);
+          }
+        }
+
         setCurrentTrack(data.currentSong);
         setIsPlaying(data.isPlaying);
         setCurrentTime(data.position);
@@ -107,7 +125,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         console.log('🔄 Auto-reconnecting audio for new song...');
         // Fetch latest server position before connecting
         fetchRadioStatus();
-        audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
+        audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
         audioRef.current.load();
         audioRef.current.play().catch(console.error);
       }
@@ -139,8 +157,10 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         // If song changed and audio was enabled, reconnect the stream
         if (songChanged && audioEnabled && audioRef.current) {
           console.log('🎵 Song changed, reconnecting audio stream...');
+          // Reset audio playing state so UI shows buffering
+          setIsAudioActuallyPlaying(false);
           // Server position is already updated above in serverPositionRef.current
-          audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
+          audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
           audioRef.current.load();
           audioRef.current.play().catch(console.error);
         }
@@ -202,6 +222,17 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack, audioEnabled, isAudioActuallyPlaying]);
 
+  // Poll radio status periodically to catch missed socket events (e.g., song changes)
+  useEffect(() => {
+    if (!isAudioActuallyPlaying) return;
+
+    const pollInterval = setInterval(() => {
+      fetchRadioStatus();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isAudioActuallyPlaying]);
+
   return (
     <div className={className}>
       <Card>
@@ -246,7 +277,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
               if (audioRef.current && audioEnabledRef.current && isPlayingRef.current) {
                 // Fetch current server position before reconnecting
                 fetchRadioStatus();
-                audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
+                audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
                 audioRef.current.load();
                 audioRef.current.play().catch(console.error);
               }
