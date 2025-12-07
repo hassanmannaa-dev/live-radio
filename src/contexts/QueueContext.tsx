@@ -19,6 +19,7 @@ interface QueueContextType {
   isLoading: boolean;
   fetchQueue: () => Promise<void>;
   addToQueue: (songId: string) => Promise<boolean>;
+  removeFromQueue: (index: number) => Promise<boolean>;
   isInQueue: (songId: string) => boolean;
   addingToQueue: Set<string>;
 }
@@ -134,6 +135,33 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
     );
   };
 
+  // Remove song from queue by index
+  const removeFromQueue = async (index: number): Promise<boolean> => {
+    try {
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        throw new Error("User ID not found");
+      }
+
+      const response = await fetch(`http://localhost:5000/api/queue/${index}`, {
+        method: "DELETE",
+        headers: {
+          "user-id": userId,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to remove song from queue");
+      }
+
+      // Socket event will handle the queue update
+      return true;
+    } catch (error) {
+      console.error("Remove from queue error:", error);
+      return false;
+    }
+  };
+
   // Socket event listeners for queue updates
   useEffect(() => {
     if (!socket) return;
@@ -176,6 +204,7 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
     isLoading,
     fetchQueue,
     addToQueue,
+    removeFromQueue,
     isInQueue,
     addingToQueue,
   };

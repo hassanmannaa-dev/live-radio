@@ -55,7 +55,10 @@ export default function ChatBox({ className }: ChatBoxProps) {
   const [chatMessage, setChatMessage] = useState("");
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [typingUsers, setTypingUsers] = useState<Map<string, string>>(new Map());
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef(false);
   const { socket, isConnected, isAuthenticated } = useSocket();
   const { addToQueue, isInQueue, addingToQueue } = useQueue();
 
@@ -130,14 +133,37 @@ export default function ChatBox({ className }: ChatBoxProps) {
       alert(error.message || "Failed to send message");
     };
 
+    // Handle typing indicator
+    const handleUserTyping = ({
+      userId,
+      username,
+      isTyping,
+    }: {
+      userId: string;
+      username: string;
+      isTyping: boolean;
+    }) => {
+      setTypingUsers((prev) => {
+        const next = new Map(prev);
+        if (isTyping) {
+          next.set(userId, username);
+        } else {
+          next.delete(userId);
+        }
+        return next;
+      });
+    };
+
     socket.on("chatHistory", handleChatHistory);
     socket.on("newMessage", handleNewMessage);
     socket.on("messageError", handleMessageError);
+    socket.on("userTyping", handleUserTyping);
 
     return () => {
       socket.off("chatHistory", handleChatHistory);
       socket.off("newMessage", handleNewMessage);
       socket.off("messageError", handleMessageError);
+      socket.off("userTyping", handleUserTyping);
     };
   }, [socket]);
 
@@ -325,12 +351,48 @@ export default function ChatBox({ className }: ChatBoxProps) {
     // Send regular message via socket
     socket.emit("sendMessage", { message });
     setChatMessage("");
+    emitTyping(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  // Emit typing status with debounce
+  const emitTyping = (typing: boolean) => {
+    if (!socket || !isConnected || !isAuthenticated) return;
+
+    if (typing && !isTypingRef.current) {
+      isTypingRef.current = true;
+      socket.emit("typing", { isTyping: true });
+    }
+
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    // Set timeout to stop typing after 2 seconds of inactivity
+    if (typing) {
+      typingTimeoutRef.current = setTimeout(() => {
+        isTypingRef.current = false;
+        socket.emit("typing", { isTyping: false });
+      }, 2000);
+    } else {
+      isTypingRef.current = false;
+      socket.emit("typing", { isTyping: false });
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setChatMessage(e.target.value);
+    if (e.target.value.trim()) {
+      emitTyping(true);
+    } else {
+      emitTyping(false);
     }
   };
 
@@ -453,6 +515,12 @@ export default function ChatBox({ className }: ChatBoxProps) {
                   </div>
                 );
               })}
+              {typingUsers.size > 0 && (
+                <div className="text-xs text-muted-foreground ml-8 mt-1 retro animate-pulse">
+                  {Array.from(typingUsers.values()).join(", ")}{" "}
+                  {typingUsers.size === 1 ? "is" : "are"} typing...
+                </div>
+              )}
               <div ref={chatEndRef} />
             </div>
           </ScrollArea>
@@ -462,7 +530,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
             <Textarea
               placeholder="Type your message..."
               value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
+              onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               className="resize-none h-20 bg-background"
               maxLength={200}
