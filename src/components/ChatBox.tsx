@@ -228,7 +228,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
     try {
       setIsSearching(true);
       const response = await fetch(
-        `http://localhost:5000/api/search?query=${encodeURIComponent(query)}`
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/search?query=${encodeURIComponent(query)}`
       );
 
       if (!response.ok) {
