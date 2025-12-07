@@ -68,23 +68,19 @@ function RadioPageContent() {
       <div className="min-h-screen bg-background p-4 flex items-center justify-center">
         <Card className="w-full max-w-md text-center">
           <CardHeader>
-            <CardTitle className="text-2xl">Welcome to Live Radio</CardTitle>
+            <CardTitle className="text-2xl">Just click yes</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {userName && (
-              <p className="text-muted-foreground retro">
-                Hey {userName}! Ready to listen?
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground retro">
-              Click below to start streaming and join the radio
+            <p className="text-muted-foreground retro">
+              For some reason chrome wants me to have this to be able to listen
             </p>
+            
             <Button
               onClick={handleEnterRadio}
               size="lg"
               className="w-full text-lg py-6"
             >
-              Start Listening
+              Yes
             </Button>
             {/* Hidden audio element to enable on click */}
             <audio ref={audioRef} preload="none" />

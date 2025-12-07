@@ -454,7 +454,7 @@ export default function ChatBox({ className }: ChatBoxProps) {
         </CardHeader>
         <CardContent className="flex-grow flex flex-col">
           {/* Chat Messages */}
-          <ScrollArea className="flex-grow mb-4 bg-muted/20 rounded border-2 border-foreground min-h-0 max-h-128">
+          <ScrollArea className="flex-grow mb-4 bg-muted/20 rounded border-2 border-foreground min-h-0 max-h-[70vh]">
             <div className="p-2 overflow-hidden">
               {groupMessagesByUser(chatMessages).map((group, groupIndex) => {
                 const avatarContent = getAvatarContent(
