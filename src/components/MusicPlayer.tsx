@@ -111,7 +111,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         console.log('🔄 Auto-reconnecting audio for new song...');
         // Fetch latest server position before connecting
         fetchRadioStatus();
-        audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
+        audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
         audioRef.current.load();
         audioRef.current.play().catch(console.error);
       }
@@ -144,7 +144,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         if (songChanged && audioEnabled && audioRef.current) {
           console.log('🎵 Song changed, reconnecting audio stream...');
           // Server position is already updated above in serverPositionRef.current
-          audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
+          audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
           audioRef.current.load();
           audioRef.current.play().catch(console.error);
         }
@@ -250,7 +250,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
               if (audioRef.current && audioEnabledRef.current && isPlayingRef.current) {
                 // Fetch current server position before reconnecting
                 fetchRadioStatus();
-                audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
+                audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
                 audioRef.current.load();
                 audioRef.current.play().catch(console.error);
               }
