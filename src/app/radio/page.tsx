@@ -51,7 +51,7 @@ function RadioPageContent() {
     // This click enables audio (browser requirement)
     if (audioRef.current) {
       try {
-        audioRef.current.src = "http://localhost:5000/api/radio/stream";
+        audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream`;
         audioRef.current.load();
         await audioRef.current.play();
         console.log('🔊 Audio enabled on entry');
