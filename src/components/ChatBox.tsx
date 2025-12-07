@@ -117,6 +117,9 @@ export default function ChatBox({ className }: ChatBoxProps) {
     // Handle new messages from other users
     const handleNewMessage = (messageData: BackendChatMessage) => {
       console.log("💬 New message received:", messageData);
+      console.log("📝 Message text length:", messageData.message.length);
+      console.log("📝 Message text:", JSON.stringify(messageData.message));
+      console.log("📝 Message text chars:", messageData.message.split('').map(c => c.charCodeAt(0)));
 
       const newMessage: ChatMessage = {
         id: messageData.id,
@@ -129,7 +132,15 @@ export default function ChatBox({ className }: ChatBoxProps) {
         isAnimating: true,
       };
 
-      setChatMessages((prev) => [...prev, newMessage]);
+      console.log("🔄 Adding message to state with ID:", messageData.id);
+      setChatMessages((prev) => {
+        console.log("📊 Current messages count:", prev.length);
+        const newMessages = [...prev, newMessage];
+        console.log("📊 New messages count:", newMessages.length);
+        return newMessages;
+      });
+
+      console.log("🎬 Starting animation for message:", messageData.id);
       animateText(messageData.message, messageData.id);
     };
 
@@ -179,15 +190,26 @@ export default function ChatBox({ className }: ChatBoxProps) {
   }, [chatMessages]);
 
   const animateText = (text: string, messageId: string) => {
+    console.log("🎬 Starting animateText for:", messageId);
+    console.log("📝 Text to animate length:", text.length);
+    console.log("📝 Text to animate:", JSON.stringify(text));
+
     let currentIndex = 0;
     const interval = setInterval(() => {
+      console.log("⏰ Animation step:", currentIndex, "for message:", messageId);
+
       setChatMessages((prev) =>
         prev.map((msg) => {
           if (msg.id === messageId) {
             const newDisplayText = text.substring(0, currentIndex + 1);
-            const isComplete = currentIndex >= text.length - 1;
+            const isComplete = currentIndex >= text.length;
+
+            console.log("📝 Current display text:", JSON.stringify(newDisplayText));
+            console.log("📝 Is complete?", isComplete, "currentIndex:", currentIndex, "text.length:", text.length);
 
             if (isComplete) {
+              console.log("✅ Animation complete for:", messageId);
+              console.log("📝 Final text:", JSON.stringify(text));
               clearInterval(interval);
               return { ...msg, displayText: text, isAnimating: false };
             }
@@ -355,6 +377,8 @@ export default function ChatBox({ className }: ChatBoxProps) {
     }
 
     // Send regular message via socket
+    console.log("📤 Sending message:", JSON.stringify(message));
+    console.log("📤 Message length:", message.length);
     socket.emit("sendMessage", { message });
     setChatMessage("");
     emitTyping(false);
