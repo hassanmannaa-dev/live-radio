@@ -63,7 +63,11 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
   // Fetch initial radio status via HTTP
   const fetchRadioStatus = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/status`);
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/status`, {
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
       if (response.ok) {
         const data: RadioState = await response.json();
         console.log('📻 Initial radio status:', data);

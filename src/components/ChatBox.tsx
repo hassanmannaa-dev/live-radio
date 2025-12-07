@@ -228,7 +228,12 @@ export default function ChatBox({ className }: ChatBoxProps) {
     try {
       setIsSearching(true);
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/search?query=${encodeURIComponent(query)}`
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/search?query=${encodeURIComponent(query)}`,
+        {
+          headers: {
+            "ngrok-skip-browser-warning": "true",
+          },
+        }
       );
 
       if (!response.ok) {

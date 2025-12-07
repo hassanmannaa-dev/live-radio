@@ -57,6 +57,7 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/queue`, {
         headers: {
           "user-id": userId,
+          "ngrok-skip-browser-warning": "true",
         },
       });
 
@@ -96,6 +97,7 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
         headers: {
           "Content-Type": "application/json",
           "user-id": userId,
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({ id: songId }),
       });
@@ -147,6 +149,7 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
         method: "DELETE",
         headers: {
           "user-id": userId,
+          "ngrok-skip-browser-warning": "true",
         },
       });
 
