@@ -143,6 +143,8 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         // If song changed and audio was enabled, reconnect the stream
         if (songChanged && audioEnabled && audioRef.current) {
           console.log('🎵 Song changed, reconnecting audio stream...');
+          // Reset audio playing state so UI shows buffering
+          setIsAudioActuallyPlaying(false);
           // Server position is already updated above in serverPositionRef.current
           audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
           audioRef.current.load();
