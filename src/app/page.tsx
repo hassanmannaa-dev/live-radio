@@ -116,12 +116,12 @@ export default function Home() {
             <label className="text-sm font-medium retro">
               Choose your avatar:
             </label>
-            <div className="grid grid-cols-5 gap-3 justify-items-center max-h-48 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="p-3 grid grid-cols-5 gap-3 justify-items-center max-h-48 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {avatarOptions.map((avatar) => (
                 <button
                   key={avatar.id}
                   onClick={() => setSelectedAvatar(avatar.id)}
-                  className={`relative w-14 h-14 border-2 rounded-full flex items-center justify-center transition-all duration-200 overflow-hidden cursor-pointer ${
+                  className={`relative w-20 h-20 border-2 rounded-full flex items-center justify-center transition-all duration-200 overflow-hidden cursor-pointer ${
                     selectedAvatar === avatar.id
                       ? "border-primary bg-primary/10 scale-110"
                       : "border-border hover:border-primary hover:scale-105"
@@ -131,8 +131,8 @@ export default function Home() {
                   <Image
                     src={avatar.src}
                     alt={avatar.alt}
-                    width={56}
-                    height={56}
+                    width={80}
+                    height={80}
                     className="w-full h-full object-cover"
                   />
                   {selectedAvatar === avatar.id && (
