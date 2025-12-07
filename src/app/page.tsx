@@ -13,13 +13,13 @@ import { Input } from "@/components/ui/8bit/input";
 import { Button } from "@/components/ui/8bit/button";
 
 // Profile image options - add images to public/profiles/ folder named 1.png, 2.png, etc.
-const PROFILE_COUNT = 5; // Update this when you add more profile images
-
-const avatarOptions = Array.from({ length: PROFILE_COUNT }, (_, index) => ({
-  id: index + 1,
-  src: `/profiles/${index + 1}.png`,
-  alt: `Profile ${index + 1}`,
-}));
+const avatarOptions = [
+  { id: 1, src: "/profiles/1.png", alt: "leaour" },
+  { id: 2, src: "/profiles/2.png", alt: "reinaour" },
+  { id: 3, src: "/profiles/3.png", alt: "blueor" },
+  { id: 4, src: "/profiles/4.png", alt: "tunaour" },
+  { id: 5, src: "/profiles/5.png", alt: "fatimaour" },
+];
 
 export default function Home() {
   const [name, setName] = useState("");
@@ -86,12 +86,12 @@ export default function Home() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl">
+        <CardHeader className="px-4 sm:px-6">
+          <CardTitle className="text-center text-xl sm:text-2xl">
             Welcome to Live Radio
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4 sm:space-y-6 px-4 sm:px-6">
           {/* Name Input */}
           <div className="space-y-2">
             <label htmlFor="name" className="text-sm font-medium retro">
@@ -112,16 +112,16 @@ export default function Home() {
           </div>
 
           {/* Avatar Selection */}
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <label className="text-sm font-medium retro">
               Choose your avatar:
             </label>
-            <div className="p-3 grid grid-cols-5 gap-3 justify-items-center max-h-48 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            <div className="p-2 sm:p-3 grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 justify-items-center max-h-48 overflow-y-auto scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
               {avatarOptions.map((avatar) => (
                 <button
                   key={avatar.id}
                   onClick={() => setSelectedAvatar(avatar.id)}
-                  className={`relative w-20 h-20 border-2 rounded-full flex items-center justify-center transition-all duration-200 overflow-hidden cursor-pointer ${
+                  className={`relative w-16 h-16 sm:w-20 sm:h-20 border-2 rounded-full flex items-center justify-center transition-all duration-200 overflow-hidden cursor-pointer ${
                     selectedAvatar === avatar.id
                       ? "border-primary bg-primary/10 scale-110"
                       : "border-border hover:border-primary hover:scale-105"
@@ -136,8 +136,8 @@ export default function Home() {
                     className="w-full h-full object-cover"
                   />
                   {selectedAvatar === avatar.id && (
-                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-xs text-primary-foreground">✓</span>
+                    <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-primary rounded-full flex items-center justify-center">
+                      <span className="text-[10px] sm:text-xs text-primary-foreground">✓</span>
                     </div>
                   )}
                 </button>
