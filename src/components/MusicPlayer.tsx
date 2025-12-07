@@ -47,6 +47,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
   const lastSongIdRef = useRef<string | null>(null);
   const audioEnabledRef = useRef(audioAlreadyEnabled);
   const isPlayingRef = useRef(false);
+  const serverPositionRef = useRef<number>(0);
   const { socket, isAuthenticated } = useSocket();
   const { registerAudioElement } = useAudioContext();
 
@@ -73,6 +74,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         if (data.currentSong && data.isPlaying) {
           setProgress((data.position / data.currentSong.duration) * 100);
           lastUpdateRef.current = { position: data.position, timestamp: Date.now() };
+          serverPositionRef.current = data.position;
         }
       }
     } catch (error) {
@@ -103,6 +105,8 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
       // Check if audio is not already playing
       if (audioRef.current.paused || !audioRef.current.src) {
         console.log('🔄 Auto-reconnecting audio for new song...');
+        // Fetch latest server position before connecting
+        fetchRadioStatus();
         audioRef.current.src = "http://localhost:5000/api/radio/stream";
         audioRef.current.load();
         audioRef.current.play().catch(console.error);
@@ -130,10 +134,12 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
       if (data.currentSong && data.isPlaying) {
         setProgress((data.position / data.currentSong.duration) * 100);
         lastUpdateRef.current = { position: data.position, timestamp: Date.now() };
+        serverPositionRef.current = data.position;
 
         // If song changed and audio was enabled, reconnect the stream
         if (songChanged && audioEnabled && audioRef.current) {
           console.log('🎵 Song changed, reconnecting audio stream...');
+          // Server position is already updated above in serverPositionRef.current
           audioRef.current.src = "http://localhost:5000/api/radio/stream";
           audioRef.current.load();
           audioRef.current.play().catch(console.error);
@@ -141,6 +147,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
       } else {
         setProgress(0);
         lastUpdateRef.current = null;
+        serverPositionRef.current = 0;
       }
 
       // If nothing is playing, stop the audio
@@ -213,10 +220,14 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
             onPlaying={() => {
               console.log('▶️ Audio actually started playing');
               setIsAudioActuallyPlaying(true);
-              // Reset time to 0 when audio actually starts (local playback begins fresh)
-              setCurrentTime(0);
-              setProgress(0);
-              lastUpdateRef.current = { position: 0, timestamp: Date.now() };
+              // Sync to server position for late joiners
+              const serverPos = serverPositionRef.current;
+              console.log(`🔄 Syncing to server position: ${serverPos}s`);
+              setCurrentTime(serverPos);
+              if (currentTrack) {
+                setProgress((serverPos / currentTrack.duration) * 100);
+              }
+              lastUpdateRef.current = { position: serverPos, timestamp: Date.now() };
               // Register audio element with AudioContext for visualizer
               if (audioRef.current) {
                 registerAudioElement(audioRef.current);
@@ -233,6 +244,8 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
             onEnded={() => {
               console.log('🔄 Audio stream ended, reconnecting...');
               if (audioRef.current && audioEnabledRef.current && isPlayingRef.current) {
+                // Fetch current server position before reconnecting
+                fetchRadioStatus();
                 audioRef.current.src = "http://localhost:5000/api/radio/stream";
                 audioRef.current.load();
                 audioRef.current.play().catch(console.error);
