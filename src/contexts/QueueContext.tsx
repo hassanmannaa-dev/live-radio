@@ -54,9 +54,10 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
         throw new Error("User ID not found");
       }
 
-      const response = await fetch("http://localhost:5000/api/queue", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/queue`, {
         headers: {
           "user-id": userId,
+          "ngrok-skip-browser-warning": "true",
         },
       });
 
@@ -91,11 +92,12 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
         throw new Error("User ID not found");
       }
 
-      const response = await fetch("http://localhost:5000/api/queue", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/queue`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "user-id": userId,
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({ id: songId }),
       });
@@ -143,10 +145,11 @@ export const QueueProvider: React.FC<QueueProviderProps> = ({ children }) => {
         throw new Error("User ID not found");
       }
 
-      const response = await fetch(`http://localhost:5000/api/queue/${index}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/queue/${index}`, {
         method: "DELETE",
         headers: {
           "user-id": userId,
+          "ngrok-skip-browser-warning": "true",
         },
       });
 

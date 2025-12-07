@@ -32,8 +32,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
 
   useEffect(() => {
     // Initialize socket connection
-    const newSocket = io("http://localhost:5000", {
+    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000", {
       autoConnect: false,
+      extraHeaders: {
+        "ngrok-skip-browser-warning": "true",
+      },
     });
 
     newSocket.on("connect", () => {

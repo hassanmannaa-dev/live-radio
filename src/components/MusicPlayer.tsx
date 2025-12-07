@@ -47,6 +47,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
   const lastSongIdRef = useRef<string | null>(null);
   const audioEnabledRef = useRef(audioAlreadyEnabled);
   const isPlayingRef = useRef(false);
+  const serverPositionRef = useRef<number>(0);
   const { socket, isAuthenticated } = useSocket();
   const { registerAudioElement } = useAudioContext();
 
@@ -59,13 +60,31 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Fetch initial radio status via HTTP
+  // Fetch radio status via HTTP
   const fetchRadioStatus = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/radio/status");
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/status`, {
+        headers: {
+          "ngrok-skip-browser-warning": "true",
+        },
+      });
       if (response.ok) {
         const data: RadioState = await response.json();
-        console.log('📻 Initial radio status:', data);
+
+        // Detect song change
+        const newSongId = data.currentSong?.id || null;
+        const songChanged = newSongId !== lastSongIdRef.current;
+
+        if (songChanged) {
+          console.log('📻 Song changed (via HTTP poll):', data.currentSong?.title);
+          lastSongIdRef.current = newSongId;
+          // Only reset audio playing state if audio is not currently playing
+          // (continuous streams don't pause between songs)
+          if (audioRef.current?.paused) {
+            setIsAudioActuallyPlaying(false);
+          }
+        }
+
         setCurrentTrack(data.currentSong);
         setIsPlaying(data.isPlaying);
         setCurrentTime(data.position);
@@ -73,6 +92,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
         if (data.currentSong && data.isPlaying) {
           setProgress((data.position / data.currentSong.duration) * 100);
           lastUpdateRef.current = { position: data.position, timestamp: Date.now() };
+          serverPositionRef.current = data.position;
         }
       }
     } catch (error) {
@@ -103,7 +123,9 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
       // Check if audio is not already playing
       if (audioRef.current.paused || !audioRef.current.src) {
         console.log('🔄 Auto-reconnecting audio for new song...');
-        audioRef.current.src = "http://localhost:5000/api/radio/stream";
+        // Fetch latest server position before connecting
+        fetchRadioStatus();
+        audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
         audioRef.current.load();
         audioRef.current.play().catch(console.error);
       }
@@ -130,17 +152,22 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
       if (data.currentSong && data.isPlaying) {
         setProgress((data.position / data.currentSong.duration) * 100);
         lastUpdateRef.current = { position: data.position, timestamp: Date.now() };
+        serverPositionRef.current = data.position;
 
         // If song changed and audio was enabled, reconnect the stream
         if (songChanged && audioEnabled && audioRef.current) {
           console.log('🎵 Song changed, reconnecting audio stream...');
-          audioRef.current.src = "http://localhost:5000/api/radio/stream";
+          // Reset audio playing state so UI shows buffering
+          setIsAudioActuallyPlaying(false);
+          // Server position is already updated above in serverPositionRef.current
+          audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
           audioRef.current.load();
           audioRef.current.play().catch(console.error);
         }
       } else {
         setProgress(0);
         lastUpdateRef.current = null;
+        serverPositionRef.current = 0;
       }
 
       // If nothing is playing, stop the audio
@@ -195,6 +222,17 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack, audioEnabled, isAudioActuallyPlaying]);
 
+  // Poll radio status periodically to catch missed socket events (e.g., song changes)
+  useEffect(() => {
+    if (!isAudioActuallyPlaying) return;
+
+    const pollInterval = setInterval(() => {
+      fetchRadioStatus();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isAudioActuallyPlaying]);
+
   return (
     <div className={className}>
       <Card>
@@ -213,10 +251,14 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
             onPlaying={() => {
               console.log('▶️ Audio actually started playing');
               setIsAudioActuallyPlaying(true);
-              // Reset time to 0 when audio actually starts (local playback begins fresh)
-              setCurrentTime(0);
-              setProgress(0);
-              lastUpdateRef.current = { position: 0, timestamp: Date.now() };
+              // Sync to server position for late joiners
+              const serverPos = serverPositionRef.current;
+              console.log(`🔄 Syncing to server position: ${serverPos}s`);
+              setCurrentTime(serverPos);
+              if (currentTrack) {
+                setProgress((serverPos / currentTrack.duration) * 100);
+              }
+              lastUpdateRef.current = { position: serverPos, timestamp: Date.now() };
               // Register audio element with AudioContext for visualizer
               if (audioRef.current) {
                 registerAudioElement(audioRef.current);
@@ -233,7 +275,9 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
             onEnded={() => {
               console.log('🔄 Audio stream ended, reconnecting...');
               if (audioRef.current && audioEnabledRef.current && isPlayingRef.current) {
-                audioRef.current.src = "http://localhost:5000/api/radio/stream";
+                // Fetch current server position before reconnecting
+                fetchRadioStatus();
+                audioRef.current.src = `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/stream?ngrok-skip-browser-warning=true`;
                 audioRef.current.load();
                 audioRef.current.play().catch(console.error);
               }

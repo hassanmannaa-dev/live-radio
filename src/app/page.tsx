@@ -48,10 +48,11 @@ export default function Home() {
 
     try {
       // Call backend API endpoint for user registration
-      const response = await fetch("http://localhost:5000/api/user/register", {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/user/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           name: name.trim(),
