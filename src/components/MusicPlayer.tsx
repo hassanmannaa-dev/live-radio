@@ -60,7 +60,7 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Fetch initial radio status via HTTP
+  // Fetch radio status via HTTP
   const fetchRadioStatus = async () => {
     try {
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000"}/api/radio/status`, {
@@ -70,7 +70,21 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
       });
       if (response.ok) {
         const data: RadioState = await response.json();
-        console.log('📻 Initial radio status:', data);
+
+        // Detect song change
+        const newSongId = data.currentSong?.id || null;
+        const songChanged = newSongId !== lastSongIdRef.current;
+
+        if (songChanged) {
+          console.log('📻 Song changed (via HTTP poll):', data.currentSong?.title);
+          lastSongIdRef.current = newSongId;
+          // Only reset audio playing state if audio is not currently playing
+          // (continuous streams don't pause between songs)
+          if (audioRef.current?.paused) {
+            setIsAudioActuallyPlaying(false);
+          }
+        }
+
         setCurrentTrack(data.currentSong);
         setIsPlaying(data.isPlaying);
         setCurrentTime(data.position);
@@ -207,6 +221,17 @@ export default function MusicPlayer({ className, audioAlreadyEnabled = false }: 
 
     return () => clearInterval(interval);
   }, [isPlaying, currentTrack, audioEnabled, isAudioActuallyPlaying]);
+
+  // Poll radio status periodically to catch missed socket events (e.g., song changes)
+  useEffect(() => {
+    if (!isAudioActuallyPlaying) return;
+
+    const pollInterval = setInterval(() => {
+      fetchRadioStatus();
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [isAudioActuallyPlaying]);
 
   return (
     <div className={className}>
