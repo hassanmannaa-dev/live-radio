@@ -62,19 +62,25 @@ export default function ChatBox({ className }: ChatBoxProps) {
   const { socket, isConnected, isAuthenticated } = useSocket();
   const { addToQueue, isInQueue, addingToQueue } = useQueue();
 
-  // Helper function to determine if message should show user info
-  const shouldShowUserInfo = (
-    currentMsg: ChatMessage,
-    index: number
-  ): boolean => {
-    if (index === 0) return true; // Always show for first message
+  // Helper function to group consecutive messages from the same user
+  const groupMessagesByUser = (messages: ChatMessage[]) => {
+    const groups: { userId?: string; username: string; avatarId?: number; messages: ChatMessage[] }[] = [];
 
-    const previousMsg = chatMessages[index - 1];
-    return (
-      !previousMsg ||
-      previousMsg.userId !== currentMsg.userId ||
-      previousMsg.username !== currentMsg.username
-    );
+    messages.forEach((msg) => {
+      const lastGroup = groups[groups.length - 1];
+      if (lastGroup && lastGroup.userId === msg.userId && lastGroup.username === msg.username) {
+        lastGroup.messages.push(msg);
+      } else {
+        groups.push({
+          userId: msg.userId,
+          username: msg.username,
+          avatarId: msg.avatarId,
+          messages: [msg],
+        });
+      }
+    });
+
+    return groups;
   };
 
   // Helper function to generate avatar image URL or fallback
@@ -420,97 +426,88 @@ export default function ChatBox({ className }: ChatBoxProps) {
         <CardContent className="flex-grow flex flex-col">
           {/* Chat Messages */}
           <ScrollArea className="flex-grow mb-4 bg-muted/20 rounded border-2 border-foreground min-h-0 max-h-128">
-            <div className="space-y-1 p-2 overflow-hidden">
-              {chatMessages.map((msg, index) => {
-                const showUserInfo = shouldShowUserInfo(msg, index);
+            <div className="p-2 overflow-hidden">
+              {groupMessagesByUser(chatMessages).map((group, groupIndex) => {
                 const avatarContent = getAvatarContent(
-                  msg.avatarId,
-                  msg.username
+                  group.avatarId,
+                  group.username
                 );
 
                 return (
                   <div
-                    key={msg.id}
-                    className={`${
-                      showUserInfo ? "space-y-1 mt-3" : "mt-1"
-                    } max-w-full`}
+                    key={`group-${group.messages[0].id}`}
+                    className={`${groupIndex === 0 ? "" : "mt-2"} max-w-full`}
                   >
-                    {showUserInfo && (
-                      <div className="flex items-center space-x-2">
-                        <Avatar className="size-6">
+                    <div className="flex items-start gap-2">
+                      <div className="flex flex-col items-center flex-shrink-0">
+                        <Avatar className="size-15">
                           {avatarContent.src && (
                             <AvatarImage
                               src={avatarContent.src}
-                              alt={`${msg.username}'s avatar`}
+                              alt={`${group.username}'s avatar`}
                             />
                           )}
                           <AvatarFallback className="text-xs">
                             {avatarContent.fallback}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-xs text-primary retro">
-                          {msg.username}:
-                        </span>
-                        <span className="text-xs text-muted-foreground retro">
-                          {new Date(msg.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
                       </div>
-                    )}
-                    <div
-                      className={`text-sm retro break-words overflow-wrap-anywhere word-break break-all max-w-full ${
-                        showUserInfo ? "ml-8" : "ml-8"
-                      }`}
-                      style={{
-                        wordBreak: "break-word",
-                        overflowWrap: "break-word",
-                      }}
-                    >
-                      {msg.displayText}
-                      {msg.isAnimating && (
-                        <span className="animate-pulse">|</span>
-                      )}
+                      <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                        {group.messages.map((msg) => (
+                          <div
+                            key={msg.id}
+                            className="text-sm retro break-words max-w-full"
+                            style={{
+                              wordBreak: "break-word",
+                              overflowWrap: "break-word",
+                            }}
+                          >
+                            {msg.displayText}
+                            {msg.isAnimating && (
+                              <span className="animate-pulse">|</span>
+                            )}
 
-                      {/* Search Results */}
-                      {msg.isSearchResult && msg.searchResults && (
-                        <div className="mt-2 space-y-1">
-                          {msg.searchResults.map((result) => {
-                            const inQueue = isInQueue(result.id);
-                            const adding = addingToQueue.has(result.id);
+                            {/* Search Results */}
+                            {msg.isSearchResult && msg.searchResults && (
+                              <div className="mt-2 space-y-1">
+                                {msg.searchResults.map((result) => {
+                                  const inQueue = isInQueue(result.id);
+                                  const adding = addingToQueue.has(result.id);
 
-                            return (
-                              <div
-                                key={result.id}
-                                className={`border border-foreground/20 rounded p-2 transition-colors ${
-                                  inQueue
-                                    ? "bg-green-500/20 border-green-500/50 cursor-not-allowed"
-                                    : adding
-                                    ? "bg-yellow-500/20 border-yellow-500/50 cursor-wait"
-                                    : "hover:bg-muted/30 cursor-pointer"
-                                }`}
-                                onClick={() => {
-                                  if (!inQueue && !adding) {
-                                    handleAddToQueue(result.id, result.title);
-                                  }
-                                }}
-                              >
-                                <div className="text-xs retro text-primary">
-                                  {result.artist} - {result.title}
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-1">
-                                  {inQueue
-                                    ? "✅ Already in queue"
-                                    : adding
-                                    ? "⏳ Adding to queue..."
-                                    : "Click to add to queue"}
-                                </div>
+                                  return (
+                                    <div
+                                      key={result.id}
+                                      className={`border border-foreground/20 rounded p-2 transition-colors ${
+                                        inQueue
+                                          ? "bg-green-500/20 border-green-500/50 cursor-not-allowed"
+                                          : adding
+                                          ? "bg-yellow-500/20 border-yellow-500/50 cursor-wait"
+                                          : "hover:bg-muted/30 cursor-pointer"
+                                      }`}
+                                      onClick={() => {
+                                        if (!inQueue && !adding) {
+                                          handleAddToQueue(result.id, result.title);
+                                        }
+                                      }}
+                                    >
+                                      <div className="text-xs retro text-primary">
+                                        {result.artist} - {result.title}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground mt-1">
+                                        {inQueue
+                                          ? "✅ Already in queue"
+                                          : adding
+                                          ? "⏳ Adding to queue..."
+                                          : "Click to add to queue"}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 );
