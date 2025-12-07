@@ -318,7 +318,7 @@ export default function Visualization({
           </div>
 
           {/* Mode indicators */}
-          <div className="flex gap-2">
+          {/* <div className="flex gap-2">
             <button
               onClick={() => isSupported && setMode("visualizer")}
               className={`w-2 h-2 rounded-full transition-colors ${
@@ -338,7 +338,7 @@ export default function Visualization({
               }`}
               aria-label="GIF mode"
             />
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>
